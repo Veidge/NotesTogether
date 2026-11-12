@@ -3,6 +3,8 @@ from datetime import datetime, timezone, timedelta
 import jwt
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jwt import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
 
@@ -17,6 +19,7 @@ EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 
 app = FastAPI()
 password_hash = PasswordHash.recommended()
+security = HTTPBearer()
 
 def create_access_token(user_id):
     expire = datetime.now(timezone.utc) + timedelta(minutes=int(EXPIRE_MINUTES))
@@ -56,8 +59,21 @@ def authentification(user: UserLogin, db: Session = Depends(get_db)):
 
 
 @app.get("/auth/me")
-def get_user_info(user_id):
-    pass
+def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(security),
+                  db: Session = Depends(get_db)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Время действия токена истекло.")
+    except InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Некорректный токен.")
+
+    user_id = int(payload['sub'])
+    checking_user = db.query(User).filter(User.id == user_id).first()
+    if not checking_user:
+        raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
+    return UserResponse(display_name=checking_user.display_name, username=checking_user.username)
 
 
 @app.get("/test-db")

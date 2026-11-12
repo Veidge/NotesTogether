@@ -13,3 +13,7 @@ SQLAlchemy==2.1.8
 starlette==1.10.0
 typing-inspection==0.4.5
 typing_extensions==4.16.0
+python-dotenv==1.2.4
+psycopg==3.3.9
+psycopg-binary==3.3.9
+

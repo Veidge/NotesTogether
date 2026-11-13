@@ -125,6 +125,8 @@ def edit_note(note_id: int, note_data: NoteUpdate, current_user: User = Depends(
     if user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
     changes = note_data.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="Полей для изменений не найдено.")
     for key, value in changes.items():
         setattr(user_note, key, value)
     db.commit()

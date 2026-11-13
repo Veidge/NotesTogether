@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timezone, timedelta
 import jwt
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
@@ -135,6 +135,15 @@ def edit_note(note_id: int, note_data: NoteUpdate, current_user: User = Depends(
 
 
 # Удалить заметку.
-@app.delete("/notes/{note_id}")
-def delete_note(current_user: User = Depends(get_current_user)):
-    pass
+@app.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    user_note.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -7,10 +7,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
-
 from app.database import get_db
-from app.models import User
-from schemas import UserRegister, UserResponse, UserLogin, TokenResponse
+from app.models import User, Note
+from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -25,6 +24,25 @@ def create_access_token(user_id):
     expire = datetime.now(timezone.utc) + timedelta(minutes=int(EXPIRE_MINUTES))
     token = jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
     return token
+
+def get_current_user(
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Время действия токена истекло.")
+    except InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Некорректный токен.")
+
+    user_id = int(payload['sub'])
+    current_user = db.query(User).filter(User.id == user_id).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
+    return current_user
+
 
 @app.get("/")
 def index():
@@ -44,7 +62,6 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     return UserResponse(display_name=display_name, username=username)
 
-
 @app.post("/auth/login")
 def authentification(user: UserLogin, db: Session = Depends(get_db)):
     username = user.username
@@ -56,21 +73,45 @@ def authentification(user: UserLogin, db: Session = Depends(get_db)):
     token = create_access_token(checking_user.id)
     return TokenResponse(access_token=token, token_type="bearer")
 
-
-
 @app.get("/auth/me")
-def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(security),
-                  db: Session = Depends(get_db)):
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Время действия токена истекло.")
-    except InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Некорректный токен.")
+def get_user_info(current_user: User = Depends(get_current_user)):
+    return UserResponse(display_name=current_user.display_name, username=current_user.username)
 
-    user_id = int(payload['sub'])
-    checking_user = db.query(User).filter(User.id == user_id).first()
-    if not checking_user:
-        raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
-    return UserResponse(display_name=checking_user.display_name, username=checking_user.username)
+# Создать заметку.
+@app.post("/notes", response_model=NoteResponse)
+def create_note(
+        note_data: NoteCreate,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    new_note = Note(
+        owner_id=current_user.id,
+        title=note_data.title,
+        content=note_data.content,
+        color=note_data.color
+    )
+    db.add(new_note)
+    db.commit()
+    db.refresh(new_note)
+    return NoteResponse.model_validate(new_note)
+
+
+# Получить список заметок пользователя.
+@app.get("/notes")
+def get_notes(current_user: User = Depends(get_current_user)):
+    pass
+
+# Сведения конкретной заметки пользователя.
+@app.get("/notes/{note_id}")
+def get_note(current_user: User = Depends(get_current_user)):
+    pass
+
+# Удалить заметку.
+@app.delete("/notes/{note_id}")
+def delete_note(current_user: User = Depends(get_current_user)):
+    pass
+
+# Редактировать заметку.
+@app.patch("/notes/{note_id}")
+def edit_note(current_user: User = Depends(get_current_user)):
+    pass

@@ -16,4 +16,10 @@ typing_extensions==4.16.0
 python-dotenv==1.2.4
 psycopg==3.3.9
 psycopg-binary==3.3.9
+uvicorn==0.54.0
+pwdlib[argon2]==0.3.1
+PyJWT==2.15.1
+cryptography==50.0.2
+
+
 

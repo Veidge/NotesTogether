@@ -2,15 +2,14 @@ import os
 from datetime import datetime, timezone, timedelta
 import jwt
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
-
 from app.database import get_db
-from app.models import User
-from schemas import UserRegister, UserResponse, UserLogin, TokenResponse
+from app.models import User, Note
+from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -25,6 +24,25 @@ def create_access_token(user_id):
     expire = datetime.now(timezone.utc) + timedelta(minutes=int(EXPIRE_MINUTES))
     token = jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
     return token
+
+def get_current_user(
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: Session = Depends(get_db)
+):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Время действия токена истекло.")
+    except InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Некорректный токен.")
+
+    user_id = int(payload['sub'])
+    current_user = db.query(User).filter(User.id == user_id).first()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
+    return current_user
+
 
 @app.get("/")
 def index():
@@ -44,7 +62,6 @@ def register_user(user: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     return UserResponse(display_name=display_name, username=username)
 
-
 @app.post("/auth/login")
 def authentification(user: UserLogin, db: Session = Depends(get_db)):
     username = user.username
@@ -56,21 +73,77 @@ def authentification(user: UserLogin, db: Session = Depends(get_db)):
     token = create_access_token(checking_user.id)
     return TokenResponse(access_token=token, token_type="bearer")
 
-
-
 @app.get("/auth/me")
-def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(security),
-                  db: Session = Depends(get_db)):
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Время действия токена истекло.")
-    except InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Некорректный токен.")
+def get_user_info(current_user: User = Depends(get_current_user)):
+    return UserResponse(display_name=current_user.display_name, username=current_user.username)
 
-    user_id = int(payload['sub'])
-    checking_user = db.query(User).filter(User.id == user_id).first()
-    if not checking_user:
-        raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
-    return UserResponse(display_name=checking_user.display_name, username=checking_user.username)
+# Создать заметку.
+@app.post("/notes", response_model=NoteResponse)
+def create_note(
+        note_data: NoteCreate,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    new_note = Note(
+        owner_id=current_user.id,
+        title=note_data.title,
+        content=note_data.content,
+        color=note_data.color
+    )
+    db.add(new_note)
+    db.commit()
+    db.refresh(new_note)
+    return NoteResponse.model_validate(new_note)
+
+
+# Получить список заметок пользователя.
+@app.get("/notes", response_model=list[NoteResponse])
+def get_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_notes = db.query(Note).filter(current_user.id == Note.owner_id, Note.deleted_at.is_(None)).all()
+    return [NoteResponse.model_validate(user_note) for user_note in user_notes]
+
+# Сведения конкретной заметки пользователя.
+@app.get("/notes/{note_id}", response_model=NoteResponse)
+def get_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        current_user.id == Note.owner_id,
+        Note.id == note_id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    return NoteResponse.model_validate(user_note)
+
+# Редактировать заметку.
+@app.patch("/notes/{note_id}", response_model=NoteResponse)
+def edit_note(note_id: int, note_data: NoteUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        current_user.id == Note.owner_id,
+        Note.id == note_id,
+        Note.deleted_at.is_(None),
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    changes = note_data.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="Полей для изменений не найдено.")
+    for key, value in changes.items():
+        setattr(user_note, key, value)
+    db.commit()
+    db.refresh(user_note)
+    return NoteResponse.model_validate(user_note)
+
+
+# Удалить заметку.
+@app.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    user_note.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

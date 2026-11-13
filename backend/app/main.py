@@ -9,7 +9,7 @@ from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Note
-from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse
+from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -114,12 +114,25 @@ def get_note(note_id: int, current_user: User = Depends(get_current_user), db: S
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
     return NoteResponse.model_validate(user_note)
 
+# Редактировать заметку.
+@app.patch("/notes/{note_id}", response_model=NoteResponse)
+def edit_note(note_id: int, note_data: NoteUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        current_user.id == Note.owner_id,
+        Note.id == note_id,
+        Note.deleted_at.is_(None),
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    changes = note_data.model_dump(exclude_unset=True)
+    for key, value in changes.items():
+        setattr(user_note, key, value)
+    db.commit()
+    db.refresh(user_note)
+    return NoteResponse.model_validate(user_note)
+
+
 # Удалить заметку.
 @app.delete("/notes/{note_id}")
 def delete_note(current_user: User = Depends(get_current_user)):
-    pass
-
-# Редактировать заметку.
-@app.patch("/notes/{note_id}")
-def edit_note(current_user: User = Depends(get_current_user)):
     pass

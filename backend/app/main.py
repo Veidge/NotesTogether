@@ -74,11 +74,3 @@ def get_user_info(credentials: HTTPAuthorizationCredentials = Depends(security),
     if not checking_user:
         raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
     return UserResponse(display_name=checking_user.display_name, username=checking_user.username)
-
-
-@app.get("/test-db")
-def test_db(db: Session = Depends(get_db)):
-    checked_user = db.query(User).filter(User.username == "veidge").first()
-    if checked_user is not None:
-        return checked_user.display_name
-    return None

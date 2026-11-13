@@ -97,14 +97,22 @@ def create_note(
 
 
 # Получить список заметок пользователя.
-@app.get("/notes")
-def get_notes(current_user: User = Depends(get_current_user)):
-    pass
+@app.get("/notes", response_model=list[NoteResponse])
+def get_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_notes = db.query(Note).filter(current_user.id == Note.owner_id, Note.deleted_at.is_(None)).all()
+    return [NoteResponse.model_validate(user_note) for user_note in user_notes]
 
 # Сведения конкретной заметки пользователя.
-@app.get("/notes/{note_id}")
-def get_note(current_user: User = Depends(get_current_user)):
-    pass
+@app.get("/notes/{note_id}", response_model=NoteResponse)
+def get_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        current_user.id == Note.owner_id,
+        Note.id == note_id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    return NoteResponse.model_validate(user_note)
 
 # Удалить заметку.
 @app.delete("/notes/{note_id}")

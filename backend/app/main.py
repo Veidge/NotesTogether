@@ -9,9 +9,9 @@ from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.database import get_db
-from app.models import User, Note, Tag, NoteTag
+from app.models import User, Note, Tag, NoteTag, NoteUser
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
-    TagResponse, TagCreate, TagUpdate
+    TagResponse, TagCreate, TagUpdate, NoteArchive
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -45,11 +45,22 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
     return current_user
 
+def build_note_response(note: Note, user_note: NoteUser) -> NoteResponse:
+    return NoteResponse(
+        id=note.id,
+        title=note.title,
+        content=note.content,
+        color=note.color,
+        is_archived=user_note.is_archived,
+        created_at=note.created_at,
+        updated_at=note.updated_at
+    )
+
 @app.get("/")
 def index():
     return {"message": "Записывай то, что не забудете вместе!"}
 
-# NOTE ENDPOINTS.
+# USER ENDPOINTS.
 
 @app.post("/auth/register")
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
@@ -80,6 +91,8 @@ def authentification(user: UserLogin, db: Session = Depends(get_db)):
 def get_user_info(current_user: User = Depends(get_current_user)):
     return UserResponse(display_name=current_user.display_name, username=current_user.username)
 
+# NOTES ENDPOINTS.
+
 # Создать заметку.
 @app.post("/notes", response_model=NoteResponse)
 def create_note(
@@ -94,78 +107,99 @@ def create_note(
         color=note_data.color
     )
     db.add(new_note)
+    db.flush()
+    note_user = NoteUser(
+        note_id=new_note.id,
+        user_id=current_user.id,
+        is_editor=False
+    )
+    db.add(note_user)
     db.commit()
     db.refresh(new_note)
-    return NoteResponse.model_validate(new_note)
-
+    return build_note_response(new_note, note_user)
 
 # Получить список заметок пользователя.
 @app.get("/notes", response_model=list[NoteResponse])
 def get_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_notes = db.query(Note).filter(
-        current_user.id == Note.owner_id,
-        Note.deleted_at.is_(None),
-        Note.is_archived.is_(False)
+    user_notes = db.query(Note, NoteUser).join(NoteUser).filter(
+        current_user.id == NoteUser.user_id,
+        NoteUser.deleted_at.is_(None),
+        NoteUser.is_archived.is_(False)
     ).all()
-    return [NoteResponse.model_validate(user_note) for user_note in user_notes]
+    return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 @app.get("/notes/archive", response_model=list[NoteResponse])
 def get_archived_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_notes = db.query(Note).filter(
-        current_user.id == Note.owner_id,
-        Note.is_archived.is_(True),
-        Note.deleted_at.is_(None)
+    user_notes = db.query(Note, NoteUser).join(NoteUser).filter(
+        current_user.id == NoteUser.user_id,
+        NoteUser.is_archived.is_(True),
+        NoteUser.deleted_at.is_(None)
     ).all()
-    return [NoteResponse.model_validate(user_note) for user_note in user_notes]
+    return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 @app.get("/notes/trash", response_model=list[NoteResponse])
 def get_trashed_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_notes = db.query(Note).filter(
-        Note.owner_id == current_user.id,
-        Note.deleted_at.is_not(None)
+    user_notes = db.query(Note, NoteUser).join(NoteUser).filter(
+        NoteUser.user_id == current_user.id,
+        NoteUser.deleted_at.is_not(None)
     ).all()
-    return [NoteResponse.model_validate(user_note) for user_note in user_notes]
+    return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 # Сведения конкретной заметки пользователя.
 @app.get("/notes/{note_id}", response_model=NoteResponse)
 def get_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).filter(
-        current_user.id == Note.owner_id,
-        Note.id == note_id,
-        Note.deleted_at.is_(None)
+    note_user_note = db.query(Note, NoteUser).join(NoteUser).filter(
+        current_user.id == NoteUser.user_id,
+        NoteUser.note_id == note_id,
+        NoteUser.deleted_at.is_(None)
     ).first()
-    if user_note is None:
+    if note_user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
-    return NoteResponse.model_validate(user_note)
+    note, user_note = note_user_note
+    return build_note_response(note, user_note)
 
 # Редактировать заметку.
 @app.patch("/notes/{note_id}", response_model=NoteResponse)
 def edit_note(note_id: int, note_data: NoteUpdate,
               current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).filter(
-        current_user.id == Note.owner_id,
-        Note.id == note_id,
-        Note.deleted_at.is_(None),
+    note_user_note = db.query(Note, NoteUser).join(NoteUser).filter(
+        current_user.id == NoteUser.user_id,
+        note_id == NoteUser.note_id,
+        NoteUser.deleted_at.is_(None),
     ).first()
-    if user_note is None:
+    if note_user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    note, user_note = note_user_note
     changes = note_data.model_dump(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=400, detail="Полей для изменений не найдено.")
     for key, value in changes.items():
-        setattr(user_note, key, value)
+        setattr(note, key, value)
     db.commit()
-    db.refresh(user_note)
-    return NoteResponse.model_validate(user_note)
+    db.refresh(note)
+    return build_note_response(note, user_note)
 
+@app.patch("/notes/{note_id}/archive", status_code=status.HTTP_204_NO_CONTENT)
+def archive_note(note_id: int, archive_data: NoteArchive,
+                 current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(NoteUser).filter(
+        note_id == NoteUser.note_id,
+        current_user.id == NoteUser.user_id,
+        NoteUser.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    user_note.is_archived = archive_data.is_archived
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Удалить заметку.
 @app.delete("/notes/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).filter(
-        note_id == Note.id,
-        current_user.id == Note.owner_id,
-        Note.deleted_at.is_(None)
+    user_note = db.query(NoteUser).filter(
+        note_id == NoteUser.note_id,
+        current_user.id == NoteUser.user_id,
+        NoteUser.deleted_at.is_(None)
     ).first()
     if user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
@@ -176,28 +210,31 @@ def delete_note(note_id: int, current_user: User = Depends(get_current_user), db
 # Восстановление заметки из корзины.
 @app.patch("/notes/{note_id}/restore", response_model=NoteResponse)
 def restore_the_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).filter(
-        note_id == Note.id,
-        current_user.id == Note.owner_id,
-        Note.deleted_at.is_not(None)
+    note_user_note = db.query(Note, NoteUser).join(NoteUser).filter(
+        note_id == NoteUser.note_id,
+        current_user.id == NoteUser.user_id,
+        NoteUser.deleted_at.is_not(None)
     ).first()
-    if user_note is None:
+    if note_user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    note, user_note = note_user_note
     user_note.deleted_at = None
     db.commit()
     db.refresh(user_note)
-    return NoteResponse.model_validate(user_note)
+    return build_note_response(note, user_note)
 
 @app.delete("/notes/{note_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
 def permanently_delete_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).filter(
-        note_id == Note.id,
-        current_user.id == Note.owner_id,
-        Note.deleted_at.is_not(None)
+    user_note = db.query(NoteUser).filter(
+        note_id == NoteUser.note_id,
+        current_user.id == NoteUser.user_id,
+        NoteUser.deleted_at.is_not(None)
     ).first()
     if user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
-    db.delete(user_note)
+    if user_note.note.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Заметка не может быть удалена Вами. Обратитесь к владельцу.")
+    db.delete(user_note.note)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -255,10 +292,10 @@ def delete_user_tag(tag_id: int, current_user: User = Depends(get_current_user),
 # Список тегов с заметки.
 @app.get("/notes/{note_id}/tags", response_model=list[TagResponse])
 def get_tags_for_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).filter(
-        note_id == Note.id,
-        current_user.id == Note.owner_id,
-        Note.deleted_at.is_(None)
+    user_note = db.query(Note).join(NoteUser).filter(
+        note_id == NoteUser.note_id,
+        current_user.id == NoteUser.user_id,
+        NoteUser.deleted_at.is_(None)
     ).first()
     if user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
@@ -268,16 +305,14 @@ def get_tags_for_note(note_id: int, current_user: User = Depends(get_current_use
     ).all()
     return [TagResponse.model_validate(tag) for tag in tags]
 
-
-
 # Назначить заметке тег.
 @app.post("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
-def change_user_tag(note_id: int, tag_id: int,
+def add_tag_to_note(note_id: int, tag_id: int,
                     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).filter(
-        current_user.id == Note.owner_id,
-        note_id == Note.id,
-        Note.deleted_at.is_(None)
+    user_note = db.query(Note).join(NoteUser).filter(
+        current_user.id == NoteUser.user_id,
+        note_id == NoteUser.note_id,
+        NoteUser.deleted_at.is_(None)
     ).first()
     if user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
@@ -305,12 +340,12 @@ def change_user_tag(note_id: int, tag_id: int,
 
 # Удалить у заметки тег.
 @app.delete("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
-def change_user_tag(note_id: int, tag_id: int,
+def remove_tag_from_note(note_id: int, tag_id: int,
                     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).filter(
-        note_id == Note.id,
-        current_user.id == Note.owner_id,
-        Note.deleted_at.is_(None)
+    user_note = db.query(Note).join(NoteUser).filter(
+        note_id == NoteUser.note_id,
+        current_user.id == NoteUser.user_id,
+        NoteUser.deleted_at.is_(None)
     ).first()
     if user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")

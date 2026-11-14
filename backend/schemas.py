@@ -28,7 +28,9 @@ class NoteUpdate(BaseModel):
     title: str | None = None
     content: str | None = None
     color: str | None = None
-    is_archived: bool | None = None
+
+class NoteArchive(BaseModel):
+    is_archived: bool
 
 class NoteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

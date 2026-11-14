@@ -7,9 +7,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.database import get_db
-from app.models import User, Note
-from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate
+from app.models import User, Note, Tag, NoteTag
+from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
+    TagResponse, TagCreate, TagUpdate
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -43,10 +45,11 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
     return current_user
 
-
 @app.get("/")
 def index():
     return {"message": "Записывай то, что не забудете вместе!"}
+
+# NOTE ENDPOINTS.
 
 @app.post("/auth/register")
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
@@ -137,7 +140,8 @@ def get_note(note_id: int, current_user: User = Depends(get_current_user), db: S
 
 # Редактировать заметку.
 @app.patch("/notes/{note_id}", response_model=NoteResponse)
-def edit_note(note_id: int, note_data: NoteUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def edit_note(note_id: int, note_data: NoteUpdate,
+              current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     user_note = db.query(Note).filter(
         current_user.id == Note.owner_id,
         Note.id == note_id,
@@ -194,5 +198,128 @@ def permanently_delete_note(note_id: int, current_user: User = Depends(get_curre
     if user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
     db.delete(user_note)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# TAGS ENDPOINTS.
+
+@app.get("/tags", response_model=list[TagResponse])
+def get_available_tags(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tags = db.query(Tag).filter(or_(current_user.id == Tag.user_id,Tag.default_tag.is_(True))).all()
+    return [TagResponse.model_validate(tag) for tag in tags]
+
+@app.post("/tags", response_model=TagResponse)
+def add_user_tag(tag_data: TagCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    new_tag = Tag(
+        name=tag_data.name,
+        default_tag=False,
+        user_id=current_user.id
+    )
+    db.add(new_tag)
+    db.commit()
+    db.refresh(new_tag)
+    return TagResponse.model_validate(new_tag)
+
+@app.patch("/tags/{tag_id}", response_model=TagResponse)
+def change_user_tag(tag_id: int, tag_data: TagUpdate,
+                    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_tag = db.query(Tag).filter(
+        tag_id == Tag.id,
+        current_user.id == Tag.user_id,
+        Tag.default_tag.is_(False)
+    ).first()
+    if user_tag is None:
+        raise HTTPException(status_code=404, detail="Тег не найден.")
+    if not tag_data.name.strip():
+        raise HTTPException(status_code=400, detail="Название тега не может быть пустым.")
+    user_tag.name = tag_data.name
+    db.commit()
+    db.refresh(user_tag)
+    return TagResponse.model_validate(user_tag)
+
+@app.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_tag(tag_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_tag = db.query(Tag).filter(
+        tag_id == Tag.id,
+        current_user.id == Tag.user_id,
+        Tag.default_tag.is_(False)
+    ).first()
+    if user_tag is None:
+        raise HTTPException(status_code=404, detail="Тег не найден.")
+    db.delete(user_tag)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# Список тегов с заметки.
+@app.get("/notes/{note_id}/tags", response_model=list[TagResponse])
+def get_tags_for_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+
+    tags = db.query(Tag).join(NoteTag).filter(
+        NoteTag.note_id == note_id
+    ).all()
+    return [TagResponse.model_validate(tag) for tag in tags]
+
+
+
+# Назначить заметке тег.
+@app.post("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+def change_user_tag(note_id: int, tag_id: int,
+                    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        current_user.id == Note.owner_id,
+        note_id == Note.id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    user_tag = db.query(Tag).filter(
+        tag_id == Tag.id, or_(
+            current_user.id == Tag.user_id, Tag.default_tag.is_(True)
+        )
+    ).first()
+    if user_tag is None:
+        raise HTTPException(status_code=404, detail="Тег не найден.")
+    note_tag = db.query(NoteTag).filter(
+        NoteTag.note_id == note_id,
+        NoteTag.tag_id == tag_id
+    ).first()
+    if note_tag is not None:
+        raise HTTPException(status_code=409, detail="У этой заметки уже существует такой тег.")
+
+    new_note_tag = NoteTag(
+        note_id=note_id,
+        tag_id=tag_id
+    )
+    db.add(new_note_tag)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+# Удалить у заметки тег.
+@app.delete("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+def change_user_tag(note_id: int, tag_id: int,
+                    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    deleting_tag = db.query(NoteTag).filter(
+        note_id == NoteTag.note_id,
+        tag_id == NoteTag.tag_id
+    ).first()
+    if deleting_tag is None:
+        raise HTTPException(status_code=404, detail="Тег не найден.")
+    db.delete(deleting_tag)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

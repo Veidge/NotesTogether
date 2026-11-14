@@ -169,13 +169,20 @@ def delete_note(note_id: int, current_user: User = Depends(get_current_user), db
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-@app.patch("/notes/{note_id}/trash")
-def move_note_in_trash():
-    pass
-
-@app.patch("/notes/{note_id}/restore")
-def restore_the_note():
-    pass
+# Восстановление заметки из корзины.
+@app.patch("/notes/{note_id}/restore", response_model=NoteResponse)
+def restore_the_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_not(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    user_note.deleted_at = None
+    db.commit()
+    db.refresh(user_note)
+    return NoteResponse.model_validate(user_note)
 
 @app.delete("/notes/{note_id}/permanent")
 def permanently_delete_note():

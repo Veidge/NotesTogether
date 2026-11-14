@@ -9,7 +9,7 @@ from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from app.database import get_db
-from app.models import User, Note, Tag
+from app.models import User, Note, Tag, NoteTag
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
     TagResponse, TagCreate, TagUpdate
 
@@ -253,18 +253,46 @@ def delete_user_tag(tag_id: int, current_user: User = Depends(get_current_user),
 
 
 # Список тегов с заметки.
-@app.get("/tags/{note_id}/tags")
+@app.get("/notes/{note_id}/tags")
 def change_user_tag(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     pass
 
 # Назначить заметке тег.
-@app.post("/tags/{note_id}/tags/{tag_id}")
+@app.post("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def change_user_tag(note_id: int, tag_id: int,
                     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    pass
+    user_note = db.query(Note).filter(
+        current_user.id == Note.owner_id,
+        note_id == Note.id,
+        Note.deleted_at.is_(None)
+    ).first()
+    user_tag = db.query(Tag).filter(
+        tag_id == Tag.id, or_(
+            current_user.id == Tag.user_id, Tag.default_tag.is_(True)
+        )
+    ).first()
+
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    if user_tag is None:
+        raise HTTPException(status_code=404, detail="Тег не найден.")
+    note_tag = db.query(NoteTag).filter(
+        NoteTag.note_id == note_id,
+        NoteTag.tag_id == tag_id
+    ).first()
+    if note_tag is not None:
+        raise HTTPException(status_code=409, detail="У этой заметки уже существует такой тег.")
+
+    new_note_tag = NoteTag(
+        note_id=note_id,
+        tag_id=tag_id
+    )
+    db.add(new_note_tag)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Удалить у заметки тег.
-@app.delete("/tags/{note_id}/tags/{tag_id}")
+@app.delete("/notes/{note_id}/tags/{tag_id}")
 def change_user_tag(note_id: int, tag_id: int,
                     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     pass

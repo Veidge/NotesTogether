@@ -279,14 +279,13 @@ def change_user_tag(note_id: int, tag_id: int,
         note_id == Note.id,
         Note.deleted_at.is_(None)
     ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
     user_tag = db.query(Tag).filter(
         tag_id == Tag.id, or_(
             current_user.id == Tag.user_id, Tag.default_tag.is_(True)
         )
     ).first()
-
-    if user_note is None:
-        raise HTTPException(status_code=404, detail="Заметка не найдена.")
     if user_tag is None:
         raise HTTPException(status_code=404, detail="Тег не найден.")
     note_tag = db.query(NoteTag).filter(
@@ -305,7 +304,22 @@ def change_user_tag(note_id: int, tag_id: int,
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Удалить у заметки тег.
-@app.delete("/notes/{note_id}/tags/{tag_id}")
+@app.delete("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def change_user_tag(note_id: int, tag_id: int,
                     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    pass
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    deleting_tag = db.query(NoteTag).filter(
+        note_id == NoteTag.note_id,
+        tag_id == NoteTag.tag_id
+    ).first()
+    if deleting_tag is None:
+        raise HTTPException(status_code=404, detail="Тег не найден.")
+    db.delete(deleting_tag)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

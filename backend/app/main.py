@@ -7,9 +7,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.database import get_db
-from app.models import User, Note
-from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate
+from app.models import User, Note, Tag
+from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
+    TagResponse
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -43,10 +45,11 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Пользователя с такими данными не найдено.")
     return current_user
 
-
 @app.get("/")
 def index():
     return {"message": "Записывай то, что не забудете вместе!"}
+
+# NOTE ENDPOINTS.
 
 @app.post("/auth/register")
 def register_user(user: UserRegister, db: Session = Depends(get_db)):
@@ -196,3 +199,11 @@ def permanently_delete_note(note_id: int, current_user: User = Depends(get_curre
     db.delete(user_note)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# TAGS ENDPOINTS.
+
+@app.get("/tags", response_model=list[TagResponse])
+def get_available_tags(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tags = db.query(Tag).filter(or_(current_user.id == Tag.user_id,Tag.default_tag.is_(True))).all()
+    return [TagResponse.model_validate(tag) for tag in tags]

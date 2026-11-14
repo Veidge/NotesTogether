@@ -115,9 +115,13 @@ def get_archived_notes(current_user: User = Depends(get_current_user), db: Sessi
     ).all()
     return [NoteResponse.model_validate(user_note) for user_note in user_notes]
 
-@app.get("/notes/trash")
-def get_trashed_notes():
-    pass
+@app.get("/notes/trash", response_model=list[NoteResponse])
+def get_trashed_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_notes = db.query(Note).filter(
+        Note.owner_id == current_user.id,
+        Note.deleted_at.is_not(None)
+    ).all()
+    return [NoteResponse.model_validate(user_note) for user_note in user_notes]
 
 # Сведения конкретной заметки пользователя.
 @app.get("/notes/{note_id}", response_model=NoteResponse)

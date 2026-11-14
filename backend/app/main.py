@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.database import get_db
 from app.models import User, Note, Tag
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
-    TagResponse
+    TagResponse, TagCreate
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -207,3 +207,40 @@ def permanently_delete_note(note_id: int, current_user: User = Depends(get_curre
 def get_available_tags(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     tags = db.query(Tag).filter(or_(current_user.id == Tag.user_id,Tag.default_tag.is_(True))).all()
     return [TagResponse.model_validate(tag) for tag in tags]
+
+@app.post("/tags", response_model=TagResponse)
+def add_user_tag(tag_data: TagCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    new_tag = Tag(
+        name=tag_data.name,
+        default_tag=False,
+        user_id=current_user.id
+    )
+    db.add(new_tag)
+    db.commit()
+    db.refresh(new_tag)
+    return TagResponse.model_validate(new_tag)
+
+@app.patch("/tags/{tag_id}", response_model=TagResponse)
+def change_user_tag(tag_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    pass
+
+@app.delete("/tags/{tag_id}", response_model=TagResponse)
+def delete_user_tag(tag_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    pass
+
+# Список тегов с заметки.
+@app.get("/tags/{note_id}/tags")
+def change_user_tag(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    pass
+
+# Назначить заметке тег.
+@app.post("/tags/{note_id}/tags/{tag_id}")
+def change_user_tag(note_id: int, tag_id: int,
+                    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    pass
+
+# Удалить у заметки тег.
+@app.delete("/tags/{note_id}/tags/{tag_id}")
+def change_user_tag(note_id: int, tag_id: int,
+                    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    pass

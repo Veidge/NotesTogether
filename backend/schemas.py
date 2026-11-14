@@ -47,3 +47,6 @@ class TagResponse(BaseModel):
     id: int
     name: str
     default_tag: bool
+
+class TagCreate(BaseModel):
+    name: str

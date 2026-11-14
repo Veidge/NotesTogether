@@ -50,3 +50,6 @@ class TagResponse(BaseModel):
 
 class TagCreate(BaseModel):
     name: str
+
+class TagUpdate(BaseModel):
+    name: str

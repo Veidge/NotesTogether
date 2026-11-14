@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.database import get_db
 from app.models import User, Note, Tag
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
-    TagResponse, TagCreate
+    TagResponse, TagCreate, TagUpdate
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -140,7 +140,8 @@ def get_note(note_id: int, current_user: User = Depends(get_current_user), db: S
 
 # Редактировать заметку.
 @app.patch("/notes/{note_id}", response_model=NoteResponse)
-def edit_note(note_id: int, note_data: NoteUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def edit_note(note_id: int, note_data: NoteUpdate,
+              current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     user_note = db.query(Note).filter(
         current_user.id == Note.owner_id,
         Note.id == note_id,
@@ -221,8 +222,21 @@ def add_user_tag(tag_data: TagCreate, current_user: User = Depends(get_current_u
     return TagResponse.model_validate(new_tag)
 
 @app.patch("/tags/{tag_id}", response_model=TagResponse)
-def change_user_tag(tag_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    pass
+def change_user_tag(tag_id: int, tag_data: TagUpdate,
+                    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_tag = db.query(Tag).filter(
+        tag_id == Tag.id,
+        current_user.id == Tag.user_id,
+        Tag.default_tag.is_(False)
+    ).first()
+    if user_tag is None:
+        raise HTTPException(status_code=404, detail="Тег не найден.")
+    if not tag_data.name.strip():
+        raise HTTPException(status_code=400, detail="Название тега не может быть пустым.")
+    user_tag.name = tag_data.name
+    db.commit()
+    db.refresh(user_tag)
+    return TagResponse.model_validate(user_tag)
 
 @app.delete("/tags/{tag_id}", response_model=TagResponse)
 def delete_user_tag(tag_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

@@ -253,9 +253,22 @@ def delete_user_tag(tag_id: int, current_user: User = Depends(get_current_user),
 
 
 # Список тегов с заметки.
-@app.get("/notes/{note_id}/tags")
-def change_user_tag(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    pass
+@app.get("/notes/{note_id}/tags", response_model=list[TagResponse])
+def get_tags_for_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+
+    tags = db.query(Tag).join(NoteTag).filter(
+        NoteTag.note_id == note_id
+    ).all()
+    return [TagResponse.model_validate(tag) for tag in tags]
+
+
 
 # Назначить заметке тег.
 @app.post("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)

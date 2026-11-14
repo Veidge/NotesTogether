@@ -99,8 +99,25 @@ def create_note(
 # Получить список заметок пользователя.
 @app.get("/notes", response_model=list[NoteResponse])
 def get_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_notes = db.query(Note).filter(current_user.id == Note.owner_id, Note.deleted_at.is_(None)).all()
+    user_notes = db.query(Note).filter(
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_(None),
+        Note.is_archived.is_(False)
+    ).all()
     return [NoteResponse.model_validate(user_note) for user_note in user_notes]
+
+@app.get("/notes/archive", response_model=list[NoteResponse])
+def get_archived_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_notes = db.query(Note).filter(
+        current_user.id == Note.owner_id,
+        Note.is_archived.is_(True),
+        Note.deleted_at.is_(None)
+    ).all()
+    return [NoteResponse.model_validate(user_note) for user_note in user_notes]
+
+@app.get("/notes/trash")
+def get_trashed_notes():
+    pass
 
 # Сведения конкретной заметки пользователя.
 @app.get("/notes/{note_id}", response_model=NoteResponse)
@@ -147,3 +164,15 @@ def delete_note(note_id: int, current_user: User = Depends(get_current_user), db
     user_note.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.patch("/notes/{note_id}/trash")
+def move_note_in_trash():
+    pass
+
+@app.patch("/notes/{note_id}/restore")
+def restore_the_note():
+    pass
+
+@app.delete("/notes/{note_id}/permanent")
+def permanently_delete_note():
+    pass

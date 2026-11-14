@@ -184,6 +184,15 @@ def restore_the_note(note_id: int, current_user: User = Depends(get_current_user
     db.refresh(user_note)
     return NoteResponse.model_validate(user_note)
 
-@app.delete("/notes/{note_id}/permanent")
-def permanently_delete_note():
-    pass
+@app.delete("/notes/{note_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def permanently_delete_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id,
+        Note.deleted_at.is_not(None)
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    db.delete(user_note)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

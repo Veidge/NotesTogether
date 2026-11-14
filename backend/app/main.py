@@ -238,9 +238,19 @@ def change_user_tag(tag_id: int, tag_data: TagUpdate,
     db.refresh(user_tag)
     return TagResponse.model_validate(user_tag)
 
-@app.delete("/tags/{tag_id}", response_model=TagResponse)
+@app.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user_tag(tag_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    pass
+    user_tag = db.query(Tag).filter(
+        tag_id == Tag.id,
+        current_user.id == Tag.user_id,
+        Tag.default_tag.is_(False)
+    ).first()
+    if user_tag is None:
+        raise HTTPException(status_code=404, detail="Тег не найден.")
+    db.delete(user_tag)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 # Список тегов с заметки.
 @app.get("/tags/{note_id}/tags")

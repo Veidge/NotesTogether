@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.database import get_db
 from app.models import User, Note, Tag, NoteTag, NoteUser
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
-    TagResponse, TagCreate, TagUpdate, NoteArchive
+    TagResponse, TagCreate, TagUpdate, NoteArchive, UserSharing
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -358,3 +358,43 @@ def remove_tag_from_note(note_id: int, tag_id: int,
     db.delete(deleting_tag)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# NOTE-USER ENDPOINTS (SHARING)
+
+@app.post("/notes/{note_id}/users", status_code=status.HTTP_201_CREATED,
+          response_class=Response, response_model=None)
+def share_note_with_user(note_id: int, sharing_data: UserSharing,
+                      current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id,
+        current_user.id == Note.owner_id
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    other_user = db.query(User).filter(
+        sharing_data.username == User.username
+    ).first()
+    if other_user is None:
+        raise HTTPException(status_code=404, detail=f"Пользователь {sharing_data.username} не найден.")
+    if other_user.id == current_user.id:
+        raise HTTPException(status_code=422, detail="Нельзя поделиться заметкой с самим собой.")
+    check_share = db.query(NoteUser).filter(
+        other_user.id == NoteUser.user_id,
+        user_note.id == NoteUser.note_id
+    ).first()
+    if check_share:
+        raise HTTPException(status_code=409, detail="Данный пользователь уже имеет доступ к заметке.")
+
+    new_share = NoteUser(
+        note_id=user_note.id,
+        user_id=other_user.id,
+        is_editor=sharing_data.is_editor,
+        is_archived=False,
+        deleted_at=None
+    )
+    db.add(new_share)
+    db.commit()
+    return Response(status_code=status.HTTP_201_CREATED)
+
+

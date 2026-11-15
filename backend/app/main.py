@@ -22,6 +22,9 @@ app = FastAPI()
 password_hash = PasswordHash.recommended()
 security = HTTPBearer()
 
+allowed_sort_fields = ["title", "updated_at"]
+allowed_orders = ["asc", "desc"]
+
 def create_access_token(user_id):
     expire = datetime.now(timezone.utc) + timedelta(minutes=int(EXPIRE_MINUTES))
     token = jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
@@ -55,6 +58,24 @@ def build_note_response(note: Note, user_note: NoteUser) -> NoteResponse:
         created_at=note.created_at,
         updated_at=note.updated_at
     )
+
+# Формирование дополнения выборки для запроса с сортировкой и поиском.
+def apply_search_and_sort(query, search: str | None = None, tag_search: str | None = None,
+                          sort_by: str = "updated_at", order: str = "desc"):
+    if search is not None:
+        query = query.filter(or_(Note.title.ilike(f'%{search}%'), Note.content.ilike(f'%{search}%')))
+    if tag_search is not None:
+        query = query.join(NoteTag).join(Tag).filter(Tag.name.ilike(f'%{tag_search}%')).distinct()
+    if sort_by not in allowed_sort_fields:
+        raise HTTPException(status_code=400, detail="Невозможно отсортировать по данному полю.")
+    if order not in allowed_orders:
+        raise HTTPException(status_code=400, detail="Некорректный тип сортировки.")
+    sort_field = getattr(Note, sort_by)
+    if order == "asc":
+        query = query.order_by(sort_field.asc())
+    else:
+        query = query.order_by(sort_field.desc())
+    return query
 
 @app.get("/")
 def index():
@@ -120,21 +141,29 @@ def create_note(
 
 # Получить список заметок пользователя.
 @app.get("/notes", response_model=list[NoteResponse])
-def get_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_notes = db.query(Note, NoteUser).join(NoteUser).filter(
+def get_notes(search: str | None = None, tag_search: str | None = None,
+              sort_by: str = "updated_at", order: str = "desc",
+              current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = db.query(Note, NoteUser).join(NoteUser).filter(
         current_user.id == NoteUser.user_id,
         NoteUser.deleted_at.is_(None),
         NoteUser.is_archived.is_(False)
-    ).all()
+    )
+    query = apply_search_and_sort(query, search, tag_search, sort_by, order)
+    user_notes = query.all()
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 @app.get("/notes/archive", response_model=list[NoteResponse])
-def get_archived_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_notes = db.query(Note, NoteUser).join(NoteUser).filter(
+def get_archived_notes(search: str | None = None, tag_search: str | None = None,
+                       sort_by: str = "updated_at", order: str = "desc",
+                       current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = db.query(Note, NoteUser).join(NoteUser).filter(
         current_user.id == NoteUser.user_id,
         NoteUser.is_archived.is_(True),
         NoteUser.deleted_at.is_(None)
-    ).all()
+    )
+    query = apply_search_and_sort(query, search, tag_search, sort_by, order)
+    user_notes = query.all()
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 @app.get("/notes/trash", response_model=list[NoteResponse])

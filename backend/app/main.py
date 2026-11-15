@@ -463,3 +463,29 @@ def change_user_role_access(note_id: int, user_id: int, editor_data: UserRoleUpd
                             display_name=user_with_access.user.display_name,
                             username=user_with_access.user.username,
                             is_editor=user_with_access.is_editor)
+
+# Удалить доступ (связь) пользователя к заметке.
+@app.delete("/notes/{note_id}/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_access_for_note(note_id: int, user_id: int,
+                                current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    if user_note.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="У Вас нет возможности удалить доступ к заметке.")
+    if user_note.owner_id == user_id:
+        raise HTTPException(status_code=422, detail="Нельзя удалить доступ к заметке самому себе.")
+
+    user_with_access = db.query(NoteUser).filter(
+        user_note.id == NoteUser.note_id,
+        user_id == NoteUser.user_id
+    ).first()
+    if user_with_access is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+
+    db.delete(user_with_access)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+

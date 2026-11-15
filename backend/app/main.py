@@ -59,6 +59,24 @@ def build_note_response(note: Note, user_note: NoteUser) -> NoteResponse:
         updated_at=note.updated_at
     )
 
+# Формирование дополнения выборки для запроса с сортировкой и поиском.
+def apply_search_and_sort(query, search: str | None = None, tag_search: str | None = None,
+                          sort_by: str = "updated_at", order: str = "desc"):
+    if search is not None:
+        query = query.filter(or_(Note.title.ilike(f'%{search}%'), Note.content.ilike(f'%{search}%')))
+    if tag_search is not None:
+        query = query.join(NoteTag).join(Tag).filter(Tag.name.ilike(f'%{tag_search}%')).distinct()
+    if sort_by not in allowed_sort_fields:
+        raise HTTPException(status_code=400, detail="Невозможно отсортировать по данному полю.")
+    if order not in allowed_orders:
+        raise HTTPException(status_code=400, detail="Некорректный тип сортировки.")
+    sort_field = getattr(Note, sort_by)
+    if order == "asc":
+        query = query.order_by(sort_field.asc())
+    else:
+        query = query.order_by(sort_field.desc())
+    return query
+
 @app.get("/")
 def index():
     return {"message": "Записывай то, что не забудете вместе!"}
@@ -131,19 +149,7 @@ def get_notes(search: str | None = None, tag_search: str | None = None,
         NoteUser.deleted_at.is_(None),
         NoteUser.is_archived.is_(False)
     )
-    if search is not None:
-        query = query.filter(or_(Note.title.ilike(f'%{search}%'), Note.content.ilike(f'%{search}%')))
-    if tag_search is not None:
-        query = query.join(NoteTag).join(Tag).filter(Tag.name.ilike(f'%{tag_search}%')).distinct()
-    if sort_by not in allowed_sort_fields:
-        raise HTTPException(status_code=400, detail="Невозможно отсортировать по данному полю.")
-    if order not in allowed_orders:
-        raise HTTPException(status_code=400, detail="Некорректный тип сортировки.")
-    sort_field = getattr(Note, sort_by)
-    if order == "asc":
-        query = query.order_by(sort_field.asc())
-    else:
-        query = query.order_by(sort_field.desc())
+    query = apply_search_and_sort(query, search, tag_search, sort_by, order)
     user_notes = query.all()
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 

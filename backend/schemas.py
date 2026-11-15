@@ -49,14 +49,35 @@ class TokenResponse(BaseModel):
     token_type: str
 
 class NoteCreate(BaseModel):
-    title: str
+    title: str = Field(min_length=1, max_length=50)
     content: str
     color: str
 
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректный заголовок: не может состоять из пробелов.")
+        return value
+
 class NoteUpdate(BaseModel):
-    title: str | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=50)
     content: str | None = None
     color: str | None = None
+
+    @field_validator("title","content", "color", mode="before")
+    @classmethod
+    def validate_note_fields(cls, value: str) -> str:
+        if value is None:
+            raise ValueError("Поля заметки не могут содержать 'null'.")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректный заголовок: не может состоять из пробелов.")
+        return value
 
 class NoteArchive(BaseModel):
     is_archived: bool

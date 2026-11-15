@@ -300,8 +300,6 @@ def change_user_tag(tag_id: int, tag_data: TagUpdate,
     ).first()
     if user_tag is None:
         raise HTTPException(status_code=404, detail="Тег не найден.")
-    if not tag_data.name.strip():
-        raise HTTPException(status_code=400, detail="Название тега не может быть пустым.")
     user_tag.name = tag_data.name
     db.commit()
     db.refresh(user_tag)

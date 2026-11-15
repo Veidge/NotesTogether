@@ -1,19 +1,48 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class UserRegister(BaseModel):
-    display_name: str
-    username: str
-    password: str
+    display_name: str = Field(min_length=3, max_length=25)
+    username: str = Field(min_length=3, max_length=25)
+    password: str = Field(min_length=8)
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректное имя пользователя: не может состоять из пробелов.")
+        return value
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректный пароль: не может состоять из пробелов.")
+        return value
 
 class UserResponse(BaseModel):
     display_name: str
     username: str
 
 class UserLogin(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=3, max_length=25)
+    password: str = Field(min_length=8)
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректное имя пользователя: не может состоять из пробелов.")
+        return value
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректный пароль: не может состоять из пробелов.")
+        return value
+
 
 class TokenResponse(BaseModel):
     access_token: str

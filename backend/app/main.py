@@ -22,6 +22,9 @@ app = FastAPI()
 password_hash = PasswordHash.recommended()
 security = HTTPBearer()
 
+allowed_sort_fields = ["title", "updated_at"]
+allowed_orders = ["asc", "desc"]
+
 def create_access_token(user_id):
     expire = datetime.now(timezone.utc) + timedelta(minutes=int(EXPIRE_MINUTES))
     token = jwt.encode({"sub": str(user_id), "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
@@ -121,6 +124,7 @@ def create_note(
 # Получить список заметок пользователя.
 @app.get("/notes", response_model=list[NoteResponse])
 def get_notes(search: str | None = None, tag_search: str | None = None,
+              sort_by: str = "updated_at", order: str = "desc",
               current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     query = db.query(Note, NoteUser).join(NoteUser).filter(
         current_user.id == NoteUser.user_id,
@@ -131,6 +135,15 @@ def get_notes(search: str | None = None, tag_search: str | None = None,
         query = query.filter(or_(Note.title.ilike(f'%{search}%'), Note.content.ilike(f'%{search}%')))
     if tag_search is not None:
         query = query.join(NoteTag).join(Tag).filter(Tag.name.ilike(f'%{tag_search}%')).distinct()
+    if sort_by not in allowed_sort_fields:
+        raise HTTPException(status_code=400, detail="Невозможно отсортировать по данному полю.")
+    if order not in allowed_orders:
+        raise HTTPException(status_code=400, detail="Некорректный тип сортировки.")
+    sort_field = getattr(Note, sort_by)
+    if order == "asc":
+        query = query.order_by(sort_field.asc())
+    else:
+        query = query.order_by(sort_field.desc())
     user_notes = query.all()
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 

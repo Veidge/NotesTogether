@@ -101,10 +101,24 @@ class TagResponse(BaseModel):
     default_tag: bool
 
 class TagCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=25)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректный тег: не может состоять из пробелов.")
+        return value
 
 class TagUpdate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=25)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректный тег: не может состоять из пробелов.")
+        return value
 
 class UserSharing(BaseModel):
     username: str

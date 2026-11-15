@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.database import get_db
 from app.models import User, Note, Tag, NoteTag, NoteUser
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
-    TagResponse, TagCreate, TagUpdate, NoteArchive, UserSharing
+    TagResponse, TagCreate, TagUpdate, NoteArchive, UserSharing, NoteUserResponse
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -409,4 +409,28 @@ def share_note_with_user(note_id: int, sharing_data: UserSharing,
     db.commit()
     return Response(status_code=status.HTTP_201_CREATED)
 
-
+# Посмотреть всех пользователей с доступом к заметке.
+@app.get("/notes/{note_id}/users", response_model=list[NoteUserResponse])
+def get_users_with_note(note_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    user_with_access = db.query(NoteUser).filter(
+        user_note.id == NoteUser.note_id,
+        current_user.id == NoteUser.user_id,
+        NoteUser.deleted_at.is_(None)
+    ).first()
+    if user_with_access is None:
+        raise HTTPException(status_code=403, detail="У Вас нет доступа к заметке.")
+    users_note_user = db.query(User, NoteUser).join(NoteUser).filter(
+        note_id == NoteUser.note_id,
+        NoteUser.deleted_at.is_(None)
+    ).all()
+    return [NoteUserResponse(
+            user_id=user.id,
+            display_name=user.display_name,
+            username=user.username,
+            is_editor=note_user.is_editor)
+        for user, note_user in users_note_user]

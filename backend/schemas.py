@@ -55,7 +55,13 @@ class TagCreate(BaseModel):
 
 class TagUpdate(BaseModel):
     name: str
-    
+
 class UserSharing(BaseModel):
+    username: str
+    is_editor: bool
+
+class NoteUserResponse(BaseModel):
+    user_id: int
+    display_name: str
     username: str
     is_editor: bool

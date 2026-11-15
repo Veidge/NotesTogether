@@ -65,3 +65,6 @@ class NoteUserResponse(BaseModel):
     display_name: str
     username: str
     is_editor: bool
+
+class UserRoleUpdate(BaseModel):
+    is_editor: bool

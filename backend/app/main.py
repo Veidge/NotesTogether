@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from app.database import get_db
 from app.models import User, Note, Tag, NoteTag, NoteUser
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
-    TagResponse, TagCreate, TagUpdate, NoteArchive, UserSharing, NoteUserResponse
+    TagResponse, TagCreate, TagUpdate, NoteArchive, UserSharing, NoteUserResponse, UserRoleUpdate
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -379,11 +379,12 @@ def remove_tag_from_note(note_id: int, tag_id: int,
 def share_note_with_user(note_id: int, sharing_data: UserSharing,
                       current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     user_note = db.query(Note).filter(
-        note_id == Note.id,
-        current_user.id == Note.owner_id
+        note_id == Note.id
     ).first()
     if user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    if user_note.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="У Вас нет возможности изменить доступ к заметке.")
     other_user = db.query(User).filter(
         sharing_data.username == User.username
     ).first()
@@ -434,3 +435,31 @@ def get_users_with_note(note_id: int, current_user: User = Depends(get_current_u
             username=user.username,
             is_editor=note_user.is_editor)
         for user, note_user in users_note_user]
+
+# Изменение роли у пользователя с доступом к заметке.
+@app.patch("/notes/{note_id}/users/{user_id}", response_model=NoteUserResponse)
+def change_user_role_access(note_id: int, user_id: int, editor_data: UserRoleUpdate,
+                            current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_note = db.query(Note).filter(
+        note_id == Note.id
+    ).first()
+    if user_note is None:
+        raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    if user_note.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="У Вас нет возможности изменить доступ к заметке.")
+    if user_note.owner_id == user_id:
+        raise HTTPException(status_code=422, detail="Нельзя изменить роль самому себе.")
+
+    user_with_access = db.query(NoteUser).filter(
+        user_note.id == NoteUser.note_id,
+        user_id == NoteUser.user_id,
+        NoteUser.deleted_at.is_(None)
+    ).first()
+    if user_with_access is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+    user_with_access.is_editor = editor_data.is_editor
+    db.commit()
+    return NoteUserResponse(user_id=user_with_access.user.id,
+                            display_name=user_with_access.user.display_name,
+                            username=user_with_access.user.username,
+                            is_editor=user_with_access.is_editor)

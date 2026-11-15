@@ -170,6 +170,9 @@ def edit_note(note_id: int, note_data: NoteUpdate,
     if note_user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
     note, user_note = note_user_note
+    if note.owner_id != current_user.id and user_note.is_editor is not True:
+        raise HTTPException(status_code=403, detail="Заметка не может быть отредактирована Вами. "
+                                                    "Пожалуйста, обратитесь к владельцу.")
     changes = note_data.model_dump(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=400, detail="Полей для изменений не найдено.")
@@ -309,13 +312,17 @@ def get_tags_for_note(note_id: int, current_user: User = Depends(get_current_use
 @app.post("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def add_tag_to_note(note_id: int, tag_id: int,
                     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).join(NoteUser).filter(
+    note_user_note = db.query(Note, NoteUser).join(NoteUser).filter(
         current_user.id == NoteUser.user_id,
         note_id == NoteUser.note_id,
         NoteUser.deleted_at.is_(None)
     ).first()
-    if user_note is None:
+    if note_user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    note, user_note = note_user_note
+    if note.owner_id != current_user.id and user_note.is_editor is not True:
+        raise HTTPException(status_code=403, detail="Тег заметки не может быть добавлен Вами. "
+                                                    "Пожалуйста, обратитесь к владельцу.")
     user_tag = db.query(Tag).filter(
         tag_id == Tag.id, or_(
             current_user.id == Tag.user_id, Tag.default_tag.is_(True)
@@ -342,13 +349,17 @@ def add_tag_to_note(note_id: int, tag_id: int,
 @app.delete("/notes/{note_id}/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_tag_from_note(note_id: int, tag_id: int,
                     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_note = db.query(Note).join(NoteUser).filter(
+    note_user_note = db.query(Note, NoteUser).join(NoteUser).filter(
         note_id == NoteUser.note_id,
         current_user.id == NoteUser.user_id,
         NoteUser.deleted_at.is_(None)
     ).first()
-    if user_note is None:
+    if note_user_note is None:
         raise HTTPException(status_code=404, detail="Заметка не найдена.")
+    note, user_note = note_user_note
+    if note.owner_id != current_user.id and user_note.is_editor is not True:
+        raise HTTPException(status_code=403, detail="Тег заметки не может быть удалён Вами. "
+                                                    "Пожалуйста, обратитесь к владельцу.")
     deleting_tag = db.query(NoteTag).filter(
         note_id == NoteTag.note_id,
         tag_id == NoteTag.tag_id
@@ -362,6 +373,7 @@ def remove_tag_from_note(note_id: int, tag_id: int,
 
 # NOTE-USER ENDPOINTS (SHARING)
 
+# Поделиться заметкой с пользователем.
 @app.post("/notes/{note_id}/users", status_code=status.HTTP_201_CREATED,
           response_class=Response, response_model=None)
 def share_note_with_user(note_id: int, sharing_data: UserSharing,

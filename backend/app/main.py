@@ -120,12 +120,18 @@ def create_note(
 
 # Получить список заметок пользователя.
 @app.get("/notes", response_model=list[NoteResponse])
-def get_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_notes = db.query(Note, NoteUser).join(NoteUser).filter(
+def get_notes(search: str | None = None, tag_search: str | None = None,
+              current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = db.query(Note, NoteUser).join(NoteUser).filter(
         current_user.id == NoteUser.user_id,
         NoteUser.deleted_at.is_(None),
         NoteUser.is_archived.is_(False)
-    ).all()
+    )
+    if search is not None:
+        query = query.filter(or_(Note.title.ilike(f'%{search}%'), Note.content.ilike(f'%{search}%')))
+    if tag_search is not None:
+        query = query.join(NoteTag).join(Tag).filter(Tag.name.ilike(f'%{tag_search}%')).distinct()
+    user_notes = query.all()
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 @app.get("/notes/archive", response_model=list[NoteResponse])

@@ -28,7 +28,9 @@ class NoteUpdate(BaseModel):
     title: str | None = None
     content: str | None = None
     color: str | None = None
-    is_archived: bool | None = None
+
+class NoteArchive(BaseModel):
+    is_archived: bool
 
 class NoteResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -53,3 +55,16 @@ class TagCreate(BaseModel):
 
 class TagUpdate(BaseModel):
     name: str
+
+class UserSharing(BaseModel):
+    username: str
+    is_editor: bool
+
+class NoteUserResponse(BaseModel):
+    user_id: int
+    display_name: str
+    username: str
+    is_editor: bool
+
+class UserRoleUpdate(BaseModel):
+    is_editor: bool

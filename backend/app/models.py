@@ -30,8 +30,6 @@ class Note(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
-    is_archived = Column(Boolean, nullable=False, default=False)
-    deleted_at = Column(DateTime, nullable=True)
     note_tag = relationship("NoteTag", back_populates="note", cascade="all, delete-orphan")
     note_user = relationship("NoteUser", back_populates="note", cascade="all, delete-orphan")
 
@@ -47,5 +45,7 @@ class NoteUser(Base):
     note_id = Column(Integer, ForeignKey('notes.id'), primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     is_editor = Column(Boolean, nullable=False, default=False)
+    is_archived = Column(Boolean, nullable=False, default=False)
+    deleted_at = Column(DateTime, nullable=True)
     user = relationship("User", back_populates="note_user")
     note = relationship("Note", back_populates="note_user")

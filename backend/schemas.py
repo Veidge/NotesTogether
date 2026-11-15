@@ -7,6 +7,13 @@ class UserRegister(BaseModel):
     username: str = Field(min_length=3, max_length=25)
     password: str = Field(min_length=8)
 
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректное имя: не может состоять из пробелов.")
+        return value
+
     @field_validator("username")
     @classmethod
     def validate_username(cls, value: str) -> str:
@@ -121,8 +128,15 @@ class TagUpdate(BaseModel):
         return value
 
 class UserSharing(BaseModel):
-    username: str
+    username: str = Field(min_length=3, max_length=25)
     is_editor: bool
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Некорректное имя пользователя: не может состоять из пробелов.")
+        return value
 
 class NoteUserResponse(BaseModel):
     user_id: int

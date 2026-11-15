@@ -154,12 +154,16 @@ def get_notes(search: str | None = None, tag_search: str | None = None,
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 @app.get("/notes/archive", response_model=list[NoteResponse])
-def get_archived_notes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    user_notes = db.query(Note, NoteUser).join(NoteUser).filter(
+def get_archived_notes(search: str | None = None, tag_search: str | None = None,
+                       sort_by: str = "updated_at", order: str = "desc",
+                       current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = db.query(Note, NoteUser).join(NoteUser).filter(
         current_user.id == NoteUser.user_id,
         NoteUser.is_archived.is_(True),
         NoteUser.deleted_at.is_(None)
-    ).all()
+    )
+    query = apply_search_and_sort(query, search, tag_search, sort_by, order)
+    user_notes = query.all()
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 @app.get("/notes/trash", response_model=list[NoteResponse])

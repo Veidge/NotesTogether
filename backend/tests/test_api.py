@@ -401,3 +401,159 @@ def test_delete_and_restore_note_successfully(client, db_session):
     # Проверка восстановления в БД.
     db_session.refresh(note_user)
     assert note_user.deleted_at is None
+
+
+# Совместный доступ: проверка прав читателя и редактора.
+def test_note_sharing_reader_and_editor_access(client, db_session):
+    # Регистрация владельца.
+    owner_register = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Владелец",
+            "username": "note_owner",
+            "password": "password123"
+        }
+    )
+    assert owner_register.status_code == 200
+
+    # Регистрация читателя.
+    reader_register = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Читатель",
+            "username": "note_reader",
+            "password": "password123"
+        }
+    )
+    assert reader_register.status_code == 200
+
+    # Регистрация редактора.
+    editor_register = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Редактор",
+            "username": "note_editor",
+            "password": "password123"
+        }
+    )
+    assert editor_register.status_code == 200
+
+    # Авторизация владельца.
+    owner_auth = client.post(
+        "/auth/login",
+        json={
+            "username": "note_owner",
+            "password": "password123"
+        }
+    )
+    assert owner_auth.status_code == 200
+    owner_headers = {
+        "Authorization": f"Bearer {owner_auth.json()['access_token']}"
+    }
+
+    # Авторизация читателя.
+    reader_auth = client.post(
+        "/auth/login",
+        json={
+            "username": "note_reader",
+            "password": "password123"
+        }
+    )
+    assert reader_auth.status_code == 200
+    reader_headers = {
+        "Authorization": f"Bearer {reader_auth.json()['access_token']}"
+    }
+
+    # Авторизация редактора.
+    editor_auth = client.post(
+        "/auth/login",
+        json={
+            "username": "note_editor",
+            "password": "password123"
+        }
+    )
+    assert editor_auth.status_code == 200
+    editor_headers = {
+        "Authorization": f"Bearer {editor_auth.json()['access_token']}"
+    }
+
+    # Создание заметки владельцем.
+    create_response = client.post(
+        "/notes",
+        json={
+            "title": "Общая заметка",
+            "content": "Исходное содержимое",
+            "color": "#ffffff"
+        },
+        headers=owner_headers
+    )
+    assert create_response.status_code == 200
+    note_id = create_response.json()["id"]
+
+    # Предоставление доступа читателю.
+    reader_share = client.post(
+        f"/notes/{note_id}/users",
+        json={
+            "username": "note_reader",
+            "is_editor": False
+        },
+        headers=owner_headers
+    )
+    assert reader_share.status_code == 201
+
+    # Предоставление доступа редактору.
+    editor_share = client.post(
+        f"/notes/{note_id}/users",
+        json={
+            "username": "note_editor",
+            "is_editor": True
+        },
+        headers=owner_headers
+    )
+    assert editor_share.status_code == 201
+
+    # Проверка: читатель не может редактировать заметку.
+    reader_edit = client.patch(
+        f"/notes/{note_id}",
+        json={"content": "Изменение от читателя"},
+        headers=reader_headers
+    )
+    assert reader_edit.status_code == 403
+
+    # Проверка: редактор может редактировать заметку.
+    editor_edit = client.patch(
+        f"/notes/{note_id}",
+        json={"content": "Изменение от редактора"},
+        headers=editor_headers
+    )
+    assert editor_edit.status_code == 200
+    assert editor_edit.json()["content"] == "Изменение от редактора"
+
+    # Проверка ролей и итогового содержимого в БД.
+    reader = db_session.query(User).filter(
+        User.username == "note_reader"
+    ).first()
+
+    editor = db_session.query(User).filter(
+        User.username == "note_editor"
+    ).first()
+
+    note = db_session.query(Note).filter(
+        Note.id == note_id
+    ).first()
+
+    reader_access = db_session.query(NoteUser).filter(
+        NoteUser.note_id == note_id,
+        NoteUser.user_id == reader.id
+    ).first()
+
+    editor_access = db_session.query(NoteUser).filter(
+        NoteUser.note_id == note_id,
+        NoteUser.user_id == editor.id
+    ).first()
+
+    assert note.content == "Изменение от редактора"
+    assert reader_access is not None
+    assert reader_access.is_editor is False
+    assert editor_access is not None
+    assert editor_access.is_editor is True

@@ -94,3 +94,27 @@ def test_login_user_successfully(client):
     assert "token_type" in response_data
     assert response_data["token_type"] == "bearer"
     assert response_data["access_token"] != ""
+
+# Авторизация пользователя с неверным паролем.
+def test_login_user_wrong_password_unsuccessfully(client):
+    # Новый пользователь.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "ГигаЧаД",
+            "username": "giga_user_pro",
+            "password": "ybnhgVv-12"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация по созданному пользователю (ошибочный пароль).
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "giga_user_pro",
+            "password": "ybnhgVv_12"
+        }
+    )
+    assert auth_response.status_code == 401
+    assert auth_response.json()['detail'] == "Пользователя с такими данными не найдено."

@@ -1,5 +1,5 @@
 // @ts-ignore
-import "./assets/main.css"
+import "./assets/style/main.css"
 
 import { createApp } from 'vue'
 import App from './App.vue'

@@ -2,6 +2,7 @@ import pytest
 from app.models import User
 
 
+# Создание пользователя с сохраненением его данных.
 def test_register_user_successfully(client, db_session):
     response = client.post(
         "/auth/register",
@@ -25,6 +26,7 @@ def test_register_user_successfully(client, db_session):
     assert user.display_name == "Atlant"
     assert user.password != "password123" # пароль в виде хэша.
 
+# Регистрация пользователя повторно.
 def test_register_user_again_unsuccessfully(client, db_session):
     response = client.post(
         "/auth/register",
@@ -62,3 +64,33 @@ def test_register_user_again_unsuccessfully(client, db_session):
     assert user is not None
     assert user.display_name == "Atlant"
     assert user.password != "password123"
+
+# Авторизация пользователя с возвращением токена.
+def test_login_user_successfully(client):
+    # Новый пользователь.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "ГигаЧаД",
+            "username": "giga_user_pro",
+            "password": "ybnhgVv-12"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация по созданному пользователю.
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "giga_user_pro",
+            "password": "ybnhgVv-12"
+        }
+    )
+    assert auth_response.status_code == 200
+
+    # Получение структуры ответа и проверка её корректности.
+    response_data = auth_response.json()
+    assert "access_token" in response_data
+    assert "token_type" in response_data
+    assert response_data["token_type"] == "bearer"
+    assert response_data["access_token"] != ""

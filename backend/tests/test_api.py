@@ -262,3 +262,71 @@ def test_get_notes_successfully(client, db_session):
     ).all()
 
     assert len(user_notes) == 2
+
+# Редактирование заметки.
+def test_edit_note_successfully(client, db_session):
+    # Регистрация пользователя.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация пользователя.
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert auth_response.status_code == 200
+
+    access_token = auth_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Создание заметки.
+    create_response = client.post(
+        "/notes",
+        json={
+            "title": "Старая заметка",
+            "content": "Старое содержимое",
+            "color": "#ffffff"
+        },
+        headers=headers
+    )
+    assert create_response.status_code == 200
+    note_id = create_response.json()["id"]
+
+    # Редактирование заметки.
+    response = client.patch(
+        f"/notes/{note_id}",
+        json={
+            "title": "Обновлённая заметка",
+            "content": "Новое содержимое",
+            "color": "#000000"
+        },
+        headers=headers
+    )
+    assert response.status_code == 200
+
+    # Проверка ответа.
+    response_data = response.json()
+    assert response_data["id"] == note_id
+    assert response_data["title"] == "Обновлённая заметка"
+    assert response_data["content"] == "Новое содержимое"
+    assert response_data["color"] == "#000000"
+
+    # Проверка изменений в БД.
+    note = db_session.query(Note).filter(
+        Note.id == note_id
+    ).first()
+
+    assert note is not None
+    assert note.title == "Обновлённая заметка"
+    assert note.content == "Новое содержимое"
+    assert note.color == "#000000"

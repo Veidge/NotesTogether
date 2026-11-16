@@ -188,3 +188,77 @@ def test_create_note_successfully(client, db_session):
     assert note_user.is_editor is False
     assert note_user.is_archived is False
     assert note_user.deleted_at is None
+
+# Получение списка заметок пользователя.
+def test_get_notes_successfully(client, db_session):
+    # Регистрация пользователя.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация пользователя.
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert auth_response.status_code == 200
+
+    access_token = auth_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Создание двух заметок.
+    for title, content in [
+        ("Первая заметка", "Первое содержимое"),
+        ("Вторая заметка", "Второе содержимое")
+    ]:
+        response = client.post(
+            "/notes",
+            json={
+                "title": title,
+                "content": content,
+                "color": "#ffffff"
+            },
+            headers=headers
+        )
+        assert response.status_code == 200
+
+    # Получение списка заметок.
+    response = client.get("/notes", headers=headers)
+    assert response.status_code == 200
+
+    # Проверка ответа.
+    response_data = response.json()
+    assert len(response_data) == 2
+
+    notes = {note["title"]: note for note in response_data}
+
+    assert "Первая заметка" in notes
+    assert "Вторая заметка" in notes
+    assert notes["Первая заметка"]["content"] == "Первое содержимое"
+    assert notes["Вторая заметка"]["content"] == "Второе содержимое"
+    assert notes["Первая заметка"]["color"] == "#ffffff"
+    assert notes["Вторая заметка"]["color"] == "#ffffff"
+
+    # Проверка записей в БД.
+    user = db_session.query(User).filter(
+        User.username == "atlant_notes"
+    ).first()
+
+    assert user is not None
+
+    user_notes = db_session.query(NoteUser).filter(
+        NoteUser.user_id == user.id,
+        NoteUser.deleted_at.is_(None),
+        NoteUser.is_archived.is_(False)
+    ).all()
+
+    assert len(user_notes) == 2

@@ -1,42 +1,146 @@
-# nodes_together_dev
+# Notes Together
 
-This template should help get you started developing with Vue 3 in Vite.
+### **Collaborative note-taking service.**
 
-## Recommended IDE Setup
+**Notes Together** — веб-приложение для создания, организации и совместного использования заметок. Проект предназначен для удобного хранения личной информации и совместной работы с заметками нескольких пользователей.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Основные возможности
 
-## Recommended Browser Setup
+- **Управление заметками:** создание, просмотр, редактирование и удаление заметок.
+- **Организация заметок:** использование тегов, цветового оформления, поиска и сортировки.
+- **Архивация и корзина:** возможность архивировать заметки, перемещать их в корзину и восстанавливать.
+- **Совместный доступ:** предоставление другим пользователям доступа к заметкам с разграничением прав.
+- **Ролевая модель:** поддержка двух ролей — читатель и редактор.
+- **Аутентификация и авторизация:** регистрация пользователей и защищённый доступ к данным с использованием JWT.
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+## Технологический стек
 
-## Type Support for `.vue` Imports in TS
+Проект разработан с использованием следующих технологий:
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+- **Frontend:** Vue 3, TypeScript, Vite, Tailwind CSS.
+- **Backend:** Python, FastAPI, SQLAlchemy, Pydantic.
+- **База данных:** PostgreSQL.
+- **Миграции базы данных:** Alembic.
+- **Контейнеризация и управление окружением:** Docker, Docker Compose (для запуска PostgreSQL).
+- **Тестирование:** Pytest, FastAPI TestClient.
 
-## Customize configuration
+## Архитектура проекта
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+Приложение построено на основе клиент-серверной архитектуры и состоит из трёх основных компонентов:
 
-## Project Setup
+- **Frontend** — пользовательский интерфейс, реализованный на Vue 3. Отвечает за взаимодействие с пользователем и отправку запросов к серверу.
+- **Backend** — серверная часть на FastAPI. Обрабатывает HTTP-запросы, выполняет бизнес-логику, проверяет права доступа и взаимодействует с базой данных.
+- **База данных** — PostgreSQL. Используется для хранения информации о пользователях, заметках, тегах и связях между ними.
 
-```sh
+Взаимодействие между Frontend и Backend осуществляется через REST API. Для защиты пользовательских ресурсов применяется JWT-аутентификация.
+
+Для запуска PostgreSQL используется Docker Compose.
+
+
+## Установка и запуск
+### 1. Клонирование репозитория
+
+```bash
+git clone <repository-url>
+cd notes_together
+```
+
+### 2. Настройка окружения
+
+Для работы Backend необходимо создать файл `backend/.env` с параметрами подключения к PostgreSQL.
+
+Файл должен содержать следующие переменные:
+
+- `POSTGRES_USER` — имя пользователя PostgreSQL;
+- `POSTGRES_PASSWORD` — пароль пользователя;
+- `POSTGRES_HOST` — адрес базы данных;
+- `POSTGRES_PORT` — порт подключения;
+- `POSTGRES_DB` — название базы данных.
+
+Файл `.env` содержит конфиденциальные данные и не должен добавляться в Git.
+
+### 3. Запуск базы данных
+
+Из корневой директории проекта выполните:
+
+```bash
+docker compose --env-file backend/.env up -d
+```
+
+Для проверки состояния контейнера:
+
+```bash
+docker compose ps
+```
+
+### 4. Запуск Backend
+
+Перейдите в директорию Backend:
+
+```bash
+cd backend
+```
+
+Создайте виртуальное окружение:
+
+```bash
+python -m venv .venv
+```
+
+Активируйте его (Windows PowerShell):
+
+```powershell
+.venv\Scripts\activate
+```
+
+Установите зависимости:
+
+```bash
+pip install -r requirements.txt
+```
+
+Примените миграции базы данных:
+
+```bash
+alembic upgrade head
+```
+
+Запустите сервер:
+
+```bash
+python -m uvicorn app.main:app --reload
+```
+
+После запуска Backend документация API будет доступна по адресу:
+
+`http://127.0.0.1:8000/docs`
+
+### 5. Запуск Frontend
+
+Откройте отдельный терминал и перейдите в директорию Frontend:
+
+```bash
+cd frontend
+```
+
+Установите зависимости:
+
+```bash
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+Запустите сервер разработки:
 
-```sh
+```bash
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+Адрес запущенного приложения будет указан в терминале.
 
-```sh
-npm run build
+## Запуск тестов Backend
+
+Из директории `backend` с активированным виртуальным окружением выполните:
+
+```bash
+python -m pytest
 ```

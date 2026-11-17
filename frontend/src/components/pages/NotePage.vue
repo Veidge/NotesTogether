@@ -13,16 +13,30 @@ interface Note {
     color: string;
 }
 
-const selected_note = ref<Note | null>(null);
-
 const list_notes = ref([
     {
         id: 1,
         title: "Заметка 1",
         content: "Текст заметки.",
         color: "#cf6f16"
+    },
+    {
+        id: 2,
+        title: "Настроить рабочую среду frontend части",
+        content: "Окружение, структура, перенос backend части. Создание первичной вёрстки для проекта. " +
+            "Подбор палитры, шрифтов.",
+        color: "#46097a"
+    },
+    {
+        id: 3,
+        title: "Посидеть вечером с кошкой",
+        content: "Осмотр задней лапы, подготовка мисок. Поставить стул для залаза и прыжков.",
+        color: "#3c3f47"
     }
 ]);
+
+
+const selected_note = ref<Note>(list_notes.value[0]);
 
 function selecting_note(note: Note) {
     selected_note.value = note;
@@ -35,7 +49,7 @@ function selecting_note(note: Note) {
         <HeaderMain/>
         <div class="flex flex-col flex-1 py-2 rounded-xl border border-text shadow-sm">
             <div class="p-6 flex flex-1 justify-between">
-                <div class="w-[20%] flex flex-col gap-2">
+                <div class="w-75 flex flex-col gap-2">
                     <div class="flex h-10 rounded-lg border border-text px-2 items-center justify-between mb-4">
                         <h2 class="font-sans text-xl">Заметки</h2>
                         <div class="flex gap-1 items-center">
@@ -49,9 +63,9 @@ function selecting_note(note: Note) {
                     </div>
                     <div class="h-11 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
                          :class="{ 'bg-accent/75': selected_note?.id === note.id }"
-                         :style="{ backgroundColor: note?.color }"
                          v-for="note in list_notes" :key="note.id" @click="selecting_note(note)">
-                        <h2 class="font-heading font-bold px-1">{{ note.title }}</h2>
+                        <div :style="{ backgroundColor: note?.color }" class="w-2 h-full shrink-0"/>
+                        <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">{{ note.title }}</h2>
                     </div>
                 </div>
                 <div class="flex flex-1 flex-col gap-2 mx-5">

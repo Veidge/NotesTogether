@@ -6,10 +6,26 @@ import { CalendarArrowDownIcon } from "@lucide/vue";
 import { CalendarArrowUpIcon } from "@lucide/vue";
 import {ref} from "vue";
 
-const selected_note = ref();
+interface Note {
+    id: number;
+    title: string;
+    content: string;
+    color: string;
+}
 
-function selecting_note(note: string) {
-    return selected_note.value = note;
+const selected_note = ref<Note | null>(null);
+
+const list_notes = ref([
+    {
+        id: 1,
+        title: "Заметка 1",
+        content: "Текст заметки.",
+        color: "#cf6f16"
+    }
+]);
+
+function selecting_note(note: Note) {
+    selected_note.value = note;
 }
 
 </script>
@@ -32,17 +48,18 @@ function selecting_note(note: string) {
                         </div>
                     </div>
                     <div class="h-11 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
-                         :class="{ 'bg-accent/75': selected_note === `Заметка ${note}` }"
-                         v-for="note in 8" :key="note" @click="selecting_note(`Заметка ${note}`)">
-                        <h2 class="font-heading font-bold px-1">Заметка {{ note }}</h2>
+                         :class="{ 'bg-accent/75': selected_note?.id === note.id }"
+                         :style="{ backgroundColor: note?.color }"
+                         v-for="note in list_notes" :key="note.id" @click="selecting_note(note)">
+                        <h2 class="font-heading font-bold px-1">{{ note.title }}</h2>
                     </div>
                 </div>
                 <div class="flex flex-1 flex-col gap-2 mx-5">
                     <div class="w-full h-10 rounded-lg border border-text px-2 content-center mb-4">
-                        <h2 class="font-sans text-xl">{{ selected_note }}</h2>
+                        <h2 class="font-sans text-xl">{{ selected_note?.title }}</h2>
                     </div>
                     <div class="flex-1 rounded-sm border border-black-200 p-4">
-                        <h3>Без ничего.</h3>
+                        <h3>{{ selected_note?.content }}</h3>
                     </div>
                 </div>
             </div>

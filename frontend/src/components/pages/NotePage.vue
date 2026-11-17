@@ -1,10 +1,17 @@
 <script setup lang="ts">
-
 import HeaderMain from "../ui/HeaderMain.vue";
 import { ArrowUpZA } from "@lucide/vue";
 import { ArrowDownZA } from "@lucide/vue";
 import { CalendarArrowDownIcon } from "@lucide/vue";
 import { CalendarArrowUpIcon } from "@lucide/vue";
+import {ref} from "vue";
+
+const selected_note = ref();
+
+function selecting_note(note: string) {
+    return selected_note.value = note;
+}
+
 </script>
 
 <template>
@@ -25,13 +32,14 @@ import { CalendarArrowUpIcon } from "@lucide/vue";
                         </div>
                     </div>
                     <div class="h-11 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
-                         v-for="note in 8" :key="note">
+                         :class="{ 'bg-accent/75': selected_note === `Заметка ${note}` }"
+                         v-for="note in 8" :key="note" @click="selecting_note(`Заметка ${note}`)">
                         <h2 class="font-heading font-bold px-1">Заметка {{ note }}</h2>
                     </div>
                 </div>
                 <div class="flex flex-1 flex-col gap-2 mx-5">
                     <div class="w-full h-10 rounded-lg border border-text px-2 content-center mb-4">
-                        <h2 class="font-sans text-xl">Заметка 1</h2>
+                        <h2 class="font-sans text-xl">{{ selected_note }}</h2>
                     </div>
                     <div class="flex-1 rounded-sm border border-black-200 p-4">
                         <h3>Без ничего.</h3>

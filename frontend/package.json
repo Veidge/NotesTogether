@@ -11,6 +11,7 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "@lucide/vue": "^1.74.0",
     "vue": "^3.5.42",
     "vue-router": "^5.5.1"
   },

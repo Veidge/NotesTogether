@@ -1,6 +1,10 @@
 <script setup lang="ts">
 
 import HeaderMain from "../ui/HeaderMain.vue";
+import { ArrowUpZA } from "@lucide/vue";
+import { ArrowDownZA } from "@lucide/vue";
+import { CalendarArrowDownIcon } from "@lucide/vue";
+import { CalendarArrowUpIcon } from "@lucide/vue";
 </script>
 
 <template>
@@ -9,11 +13,20 @@ import HeaderMain from "../ui/HeaderMain.vue";
         <div class="flex flex-col flex-1 py-2 rounded-xl border border-text shadow-sm">
             <div class="p-6 flex flex-1 justify-between">
                 <div class="w-[20%] flex flex-col gap-2">
-                    <div class="w-full h-10 rounded-lg border border-text px-2 content-center mb-4">
+                    <div class="flex h-10 rounded-lg border border-text px-2 items-center justify-between mb-4">
                         <h2 class="font-sans text-xl">Заметки</h2>
+                        <div class="flex gap-1 items-center">
+                            <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md">
+                                <CalendarArrowUpIcon />
+                            </button>
+                            <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md">
+                                <ArrowDownZA/>
+                            </button>
+                        </div>
                     </div>
-                    <div class="h-11 rounded-sm border border-text" v-for="note in 8" :key="note">
-                        <h2 class="font-heading font-bold px-1">Заметка</h2>
+                    <div class="h-11 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
+                         v-for="note in 8" :key="note">
+                        <h2 class="font-heading font-bold px-1">Заметка {{ note }}</h2>
                     </div>
                 </div>
                 <div class="flex flex-1 flex-col gap-2 mx-5">

@@ -4,13 +4,14 @@ import { ArrowUpZA } from "@lucide/vue";
 import { ArrowDownZA } from "@lucide/vue";
 import { CalendarArrowDownIcon } from "@lucide/vue";
 import { CalendarArrowUpIcon } from "@lucide/vue";
-import {ref} from "vue";
+import {computed, ref} from "vue";
 
 interface Note {
     id: number;
     title: string;
     content: string;
     color: string;
+    updated_at: string;
 }
 
 const list_notes = ref([
@@ -18,28 +19,64 @@ const list_notes = ref([
         id: 1,
         title: "Заметка 1",
         content: "Текст заметки.",
-        color: "#cf6f16"
+        color: "#cf6f16",
+        updated_at: "2026-11-17T14:30:00",
     },
     {
         id: 2,
         title: "Настроить рабочую среду frontend части",
         content: "Окружение, структура, перенос backend части. Создание первичной вёрстки для проекта. " +
             "Подбор палитры, шрифтов.",
-        color: "#46097a"
+        color: "#46097a",
+        updated_at: "2026-11-17T18:30:30",
     },
     {
         id: 3,
         title: "Посидеть вечером с кошкой",
         content: "Осмотр задней лапы, подготовка мисок. Поставить стул для залаза и прыжков.",
-        color: "#3c3f47"
+        color: "#3c3f47",
+        updated_at: "2026-11-17T19:55:32",
     }
 ]);
 
-
+const sort_by = ref<"title" | "updated_at">("updated_at");
+const sort_direction = ref<"asc" | "desc">("desc");
 const selected_note = ref<Note>(list_notes.value[0]);
 
 function selecting_note(note: Note) {
     selected_note.value = note;
+}
+
+const sorted_notes = computed(() => {
+    return [...list_notes.value].sort((a, b) => {
+        if (sort_by.value === 'updated_at') {
+            return (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()) *
+                (sort_direction.value === "asc" ? 1 : -1);
+        }
+        return a.title.localeCompare(b.title) * (sort_direction.value === "asc" ? 1 : -1);
+    });
+});
+
+function sort_by_title() {
+    if (sort_by.value === "title") {
+        sort_direction.value =
+            sort_direction.value === "asc" ? "desc" : "asc";
+    }
+    else {
+        sort_by.value = "title";
+        sort_direction.value = "asc";
+    }
+}
+
+function sort_by_updated_at() {
+    if (sort_by.value === "updated_at") {
+        sort_direction.value =
+            sort_direction.value === "desc" ? "asc" : "desc";
+    }
+    else {
+        sort_by.value = "updated_at";
+        sort_direction.value = "desc";
+    }
 }
 
 </script>
@@ -54,16 +91,16 @@ function selecting_note(note: Note) {
                         <h2 class="font-sans text-xl">Заметки</h2>
                         <div class="flex gap-1 items-center">
                             <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md">
-                                <CalendarArrowUpIcon />
+                                <CalendarArrowUpIcon @click="sort_by_updated_at" />
                             </button>
                             <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md">
-                                <ArrowDownZA/>
+                                <ArrowDownZA @click="sort_by_title"/>
                             </button>
                         </div>
                     </div>
                     <div class="h-11 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
                          :class="{ 'bg-accent/75': selected_note?.id === note.id }"
-                         v-for="note in list_notes" :key="note.id" @click="selecting_note(note)">
+                         v-for="note in sorted_notes" :key="note.id" @click="selecting_note(note)">
                         <div :style="{ backgroundColor: note?.color }" class="w-2 h-full shrink-0"/>
                         <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">{{ note.title }}</h2>
                     </div>

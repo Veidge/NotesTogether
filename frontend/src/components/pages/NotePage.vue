@@ -95,14 +95,16 @@ function sortByUpdatedAt() {
                         <h2 class="font-sans text-xl">Заметки</h2>
                         <div class="flex gap-1 items-center">
                             <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
-                                    :class="sortBy === 'updated_at' ? 'bg-accent/75' : 'hover:bg-accent/35'"
+                                    :class="sortBy === 'updated_at' ? 'bg-accent/75' : ''"
                                     @click="sortByUpdatedAt" >
-                                <CalendarArrowUpIcon/>
+                                <CalendarArrowUpIcon v-if="sortBy === 'updated_at' && sortDirection === 'asc'"/>
+                                <CalendarArrowDownIcon v-else/>
                             </button>
                             <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
-                                    :class="sortBy === 'title' ? 'bg-accent/75' : 'hover:bg-accent/35'"
+                                    :class="sortBy === 'title' ? 'bg-accent/75' : ''"
                                     @click="sortByTitle" >
-                                <ArrowDownZA/>
+                                <ArrowDownZA v-if="sortBy === 'title' && sortDirection === 'desc'"/>
+                                <ArrowUpZA v-else/>
                             </button>
                         </div>
                     </div>

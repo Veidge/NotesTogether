@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.74.0",
+    "@vee-validate/zod": "^4.15.1",
     "pinia": "^4.1.0",
     "vue": "^3.5.42",
     "vue-router": "^5.5.1"

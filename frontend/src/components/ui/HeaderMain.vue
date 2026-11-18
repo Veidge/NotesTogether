@@ -12,7 +12,7 @@
                    class="w-full rounded-lg border border-color-accent bg-surface px-3 py-1"/>
         </div>
         <div class="gap-2 content-center mx-2 p-2">
-            <a href="#">Профиль</a>
+            <RouterLink to="/login">Профиль</RouterLink>
         </div>
     </div>
 </template>

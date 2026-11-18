@@ -3,6 +3,7 @@ import {toTypedSchema} from '@vee-validate/zod'
 import * as z from 'zod'
 import {useForm} from "vee-validate"
 import HeaderBase from "../ui/HeaderBase.vue";
+import {useAuthStore} from "../../stores/auth";
 
 const formSchema = toTypedSchema(
     z.object({
@@ -20,14 +21,20 @@ const form = useForm({
     validationSchema: formSchema,
 })
 
-const onSubmit = form.handleSubmit((values) => {
-    console.log('Form submitted!', values)
-})
-
 const [displayName, displayNameAttrs] = form.defineField('displayName');
 const [username, usernameAttrs] = form.defineField('username');
 const [password, passwordAttrs] = form.defineField('password');
 const [confirmPassword, confirmPasswordAttrs] = form.defineField('confirmPassword');
+
+const authStore = useAuthStore();
+
+const onSubmit = form.handleSubmit((values) => {
+    authStore.register({
+        displayName: values.displayName,
+        username: values.username,
+        password: values.password
+    })
+})
 
 </script>
 

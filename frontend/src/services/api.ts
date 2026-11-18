@@ -10,6 +10,10 @@ export interface TokenResponse {
     token_type: string;
 }
 
+export interface ApiError extends Error {
+    status: number;
+}
+
 export async function getUser(token: string): Promise<ApiUser> {
     const response = await fetch(`${API_URL}/auth/me`, {
         method: 'GET',
@@ -45,7 +49,11 @@ export async function register(displayName: string, username: string, password: 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(`Ошибка получения данных: ${response.status} ${response.statusText} - ${errorData.detail}`);
+        const error = new Error(
+            `Ошибка получения данных: ${response.status} ${response.statusText} - ${errorData.detail}`
+        ) as ApiError;
+        error.status = response.status;
+        throw error;
     }
     return response.json();
 }

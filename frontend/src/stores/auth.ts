@@ -1,5 +1,5 @@
 import {defineStore} from "pinia";
-import { getUser, login, register } from "../services/api.ts";
+import { getUser, login, register, type ApiError } from "../services/api.ts";
 
 export interface UserRegister {
     displayName: string;
@@ -52,8 +52,20 @@ export const useAuthStore = defineStore("auth", {
             if (!this.token) {
                 return;
             }
-            const userResponse = await getUser(this.token);
-            this.user = { displayName: userResponse.display_name, username: userResponse.username };
+            try {
+                const userResponse = await getUser(this.token);
+                this.user = { displayName: userResponse.display_name, username: userResponse.username };
+            }
+            catch (error) {
+                if (error instanceof Error && "status" in error && typeof error.status === "number") {
+                    const apiError = error as ApiError;
+                    if (apiError.status === 401) {
+                        this.logout();
+                        return;
+                    }
+                }
+                throw error;
+            }
         }
     }
 })

@@ -1,4 +1,5 @@
 import {defineStore} from "pinia";
+import { getUser, login, register } from "../services/api.ts";
 
 export interface UserRegister {
     displayName: string;
@@ -19,7 +20,7 @@ export interface User {
 export const useAuthStore = defineStore("auth", {
     state: () => ({
         user: null as User | null,
-        token: null as string | null
+        token: localStorage.getItem("token"),
     }),
 
     getters: {
@@ -32,15 +33,27 @@ export const useAuthStore = defineStore("auth", {
         logout() {
             this.user = null;
             this.token = null;
+            localStorage.removeItem("token");
         },
-        login(authData: UserLogin) {
+        async login(authData: UserLogin) {
             console.log("Вызван login:", authData)
+            const tokenResponse  = await login(authData.username, authData.password);
+            this.token = tokenResponse.access_token
+            localStorage.setItem("token", tokenResponse.access_token)
+            const userResponse = await getUser(tokenResponse.access_token);
+            this.user = { displayName: userResponse.display_name, username: userResponse.username };
         },
-        register(registerData: UserRegister) {
+        async register(registerData: UserRegister) {
             console.log("Вызван register:", registerData);
+            const userResponse = await register(registerData.displayName, registerData.username, registerData.password);
+            this.user = { displayName: userResponse.display_name, username: userResponse.username };
         },
-        fetchCurrentUser() {
-
+        async fetchCurrentUser() {
+            if (!this.token) {
+                return;
+            }
+            const userResponse = await getUser(this.token);
+            this.user = { displayName: userResponse.display_name, username: userResponse.username };
         }
     }
 })

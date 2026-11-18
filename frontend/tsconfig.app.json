@@ -2,8 +2,8 @@
   "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": [
     "../env.d.ts",
-    "frontend/src/**/*",
-    "frontend/src/**/*.vue"
+    "src/**/*",
+    "src/**/*.vue"
   ],
   "exclude": [
     "frontend/src/**/__tests__/*"

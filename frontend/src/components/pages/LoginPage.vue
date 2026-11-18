@@ -7,7 +7,8 @@ import {useAuthStore} from "../../stores/auth";
 
 const formSchema = toTypedSchema(
     z.object({
-        username: z.string().min(3, "Имя пользователя должно содержать минимум 3 символа."),
+        username: z.string().min(3, "Имя пользователя должно содержать минимум 3 символа.")
+            .max(25, "Имя пользователя должно содержать минимум 25 символов."),
         password: z.string().min(8, "Пароль должен содержать минимум 8 символов."),
     })
 )

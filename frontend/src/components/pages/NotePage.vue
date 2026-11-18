@@ -5,7 +5,8 @@ import { ArrowDownZA } from "@lucide/vue";
 import { CalendarArrowDownIcon } from "@lucide/vue";
 import { CalendarArrowUpIcon } from "@lucide/vue";
 import {computed, ref, watch} from "vue";
-import {Note, useNotesStore} from "../../stores/notes";
+import type { Note } from '../../stores/notes';
+import { useNotesStore} from '../../stores/notes';
 import {storeToRefs} from "pinia";
 //
 // const listNotes = ref([
@@ -54,7 +55,7 @@ const sortedNotes = computed(() => {
 
 watch(sortedNotes, (notes) => {
     if (notes.length > 0) {
-        notesStore.selectNote(notes[0]);
+        notesStore.selectNote(notes[0] ?? null);
     }
     else {
         notesStore.selectNote(null);

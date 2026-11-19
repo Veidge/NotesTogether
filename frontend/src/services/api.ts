@@ -1,5 +1,4 @@
 import type {Note} from "../stores/notes.ts";
-import {handleError} from "vue";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -70,4 +69,31 @@ export async function getNotes(token: string): Promise<Note[]> {
         }
     });
     return handleResponse<Note[]>(response);
+}
+
+export async function createNote(token: string, noteData: Pick<Note, "title" | "content" | "color">): Promise<Note> {
+    const response = await fetch(`${API_URL}/notes`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(noteData)
+    });
+
+    return handleResponse<Note>(response);
+}
+
+export async function updateNote(token: string, noteId: number,
+                                 changes: Partial<Pick<Note, "title" | "content" | "color">>): Promise<Note> {
+    const response = await fetch(`${API_URL}/notes/${noteId}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(changes)
+    });
+
+    return handleResponse<Note>(response);
 }

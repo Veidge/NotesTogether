@@ -1,5 +1,6 @@
 import {defineStore} from "pinia";
-import {getNotes, createNote as createNoteRequest, updateNote as updateNoteRequest} from "../services/api.ts";
+import {getNotes, createNote as createNoteRequest, updateNote as updateNoteRequest,
+    deleteNote as deleteNoteRequest} from "../services/api.ts";
 
 export interface Note {
     id: number;
@@ -36,15 +37,21 @@ export const useNotesStore = defineStore("notes", {
 
         async updateNote(token: string, noteId: number, changes: NoteChanges) {
             const updatedNote = await updateNoteRequest(token, noteId, changes);
-
             const index = this.listNotes.findIndex(note => note.id === noteId);
-
             if (index !== -1) {
                 this.listNotes[index] = updatedNote;
             }
 
             if (this.selectedNote?.id === noteId) {
                 this.selectedNote = updatedNote;
+            }
+        },
+
+        async deleteNote(token: string, noteId: number) {
+            await deleteNoteRequest(token, noteId);
+            this.listNotes = this.listNotes.filter(note => note.id !== noteId);
+            if (this.selectedNote?.id === noteId) {
+                this.selectedNote = this.listNotes[0] ?? null;
             }
         },
 

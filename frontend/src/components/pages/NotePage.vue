@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import HeaderMain from "../ui/HeaderMain.vue";
-import { ArrowUpZA } from "@lucide/vue";
-import { ArrowDownZA } from "@lucide/vue";
-import { CalendarArrowDownIcon } from "@lucide/vue";
-import { CalendarArrowUpIcon } from "@lucide/vue";
+import {
+    ArrowUpZA, ArrowDownZA,
+    CalendarArrowDownIcon, CalendarArrowUpIcon,
+    PlusIcon, XIcon
+} from "@lucide/vue";
 import {computed, onMounted, ref, watch, onBeforeUnmount} from "vue";
 import type { Note } from '../../stores/notes';
 import { useNotesStore } from '../../stores/notes';
@@ -11,7 +12,6 @@ import {storeToRefs} from "pinia";
 import { useAuthStore } from "../../stores/auth";
 import {useRouter} from "vue-router";
 import ColorPicker from "../ui/ColorPicker.vue";
-import { PlusIcon } from "@lucide/vue";
 import CreateNoteModal from "../ui/CreateNoteModal.vue";
 
 
@@ -32,6 +32,8 @@ const isCreateModalOpen = ref(false);
 const isCreating = ref(false);
 const createError = ref("");
 
+const isDeleting = ref(false);
+const deleteError = ref("");
 
 function openColorPicker() {
     if (!selectedNote.value) return;
@@ -217,6 +219,28 @@ async function handleCreateNote(noteData: {
     }
 }
 
+async function handleDeleteNote() {
+    const note = selectedNote.value;
+    if (!note || !authStore.token || isDeleting.value || isSavingColor.value) return;
+    isDeleting.value = true;
+    deleteError.value = "";
+
+    try {
+        await flushSave();
+        if (saveStatus.value === "error") {
+            deleteError.value = "Сначала необходимо сохранить изменения.";
+            return;
+        }
+
+        await notesStore.deleteNote(authStore.token, note.id);
+    } catch (error) {
+        console.error("Не удалось переместить заметку в корзину:", error);
+        deleteError.value = "Не удалось переместить заметку в корзину.";
+    } finally {
+        isDeleting.value = false;
+    }
+}
+
 watch(
     selectedNote,
     (note) => {
@@ -284,6 +308,12 @@ onBeforeUnmount(() => {
                             @click="openColorPicker"/>
                         <input v-model="editTitle" class="font-sans text-xl w-full outline-none bg-transparent"
                             placeholder="Название заметки" maxlength="50"/>
+                        <button
+                            class="shrink-0 p-1 rounded-md hover:bg-red-200/70 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Переместить в корзину" :disabled="!selectedNote || isDeleting || isSavingColor"
+                            @click="handleDeleteNote">
+                            <XIcon :size="20" />
+                        </button>
                     </div>
 
                     <p class="text-xs text-text/60 text-right -mt-3 mb-1">
@@ -291,6 +321,9 @@ onBeforeUnmount(() => {
                         <span v-else-if="saveStatus === 'saving'">Сохранение...</span>
                         <span v-else-if="saveStatus === 'saved'">Сохранено</span>
                         <span v-else-if="saveStatus === 'error'" class="text-red-700">Ошибка сохранения</span>
+                    </p>
+                    <p v-if="deleteError" class="text-xs text-red-700 text-right -mt-3 mb-1">
+                        {{ deleteError }}
                     </p>
 
                     <div v-if="isColorPickerOpen"
@@ -309,8 +342,7 @@ onBeforeUnmount(() => {
                         <p v-if="colorSaveError" class="text-sm text-red-700">{{ colorSaveError }}</p>
                     </div>
                     <div class="flex-1 rounded-sm border border-black-200 p-4">
-                        <textarea
-                            v-model="editContent"
+                        <textarea v-model="editContent" :disabled="!selectedNote || isDeleting"
                             class="w-full h-full resize-none outline-none bg-transparent font-sans"
                             placeholder="Начните писать..."
                         />

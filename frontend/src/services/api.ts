@@ -57,6 +57,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
         error.status = response.status;
         throw error;
     }
+    if (response.status === 204) {
+        return undefined as T;
+    }
     return response.json();
 }
 
@@ -96,4 +99,15 @@ export async function updateNote(token: string, noteId: number,
     });
 
     return handleResponse<Note>(response);
+}
+
+export async function deleteNote(token: string, noteId: number): Promise<void> {
+    const response = await fetch(`${API_URL}/notes/${noteId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    return handleResponse<void>(response);
 }

@@ -6,7 +6,7 @@ import {
     PlusIcon, XIcon
 } from "@lucide/vue";
 import {computed, onMounted, ref, watch, onBeforeUnmount} from "vue";
-import type { Note } from '../../stores/notes';
+import type {Note, NoteSection} from '../../stores/notes';
 import { useNotesStore } from '../../stores/notes';
 import {storeToRefs} from "pinia";
 import { useAuthStore } from "../../stores/auth";
@@ -19,7 +19,7 @@ const router = useRouter();
 const notesStore = useNotesStore();
 const authStore = useAuthStore();
 
-const { listNotes, selectedNote } = storeToRefs(notesStore);
+const { listNotes, archivedNotes, trashedNotes, selectedNote, activeSection } = storeToRefs(notesStore);
 const sortBy = ref<"title" | "updated_at">("updated_at");
 const sortDirection = ref<"asc" | "desc">("desc");
 
@@ -108,19 +108,28 @@ onMounted(async () => {
     }
 });
 
-function selectNote(note: Note) {
-    notesStore.selectNote(note);
+function selectNote(note: Note, section: NoteSection) {
+    notesStore.selectNote(note, section);
 }
 
-const sortedNotes = computed(() => {
-    return [...listNotes.value].sort((a, b) => {
-        if (sortBy.value === 'updated_at') {
-            return (new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()) *
-                (sortDirection.value === "asc" ? 1 : -1);
+function sortNotes(notes: Note[]) {
+    return [...notes].sort((a, b) => {
+        const direction = sortDirection.value === "asc" ? 1 : -1;
+
+        if (sortBy.value === "updated_at") {
+            return (
+                new Date(a.updated_at).getTime() -
+                new Date(b.updated_at).getTime()
+            ) * direction;
         }
-        return a.title.localeCompare(b.title) * (sortDirection.value === "asc" ? 1 : -1);
+
+        return a.title.localeCompare(b.title) * direction;
     });
-});
+}
+
+const sortedNotes = computed(() => sortNotes(listNotes.value));
+const sortedArchivedNotes = computed(() => sortNotes(archivedNotes.value));
+const sortedTrashedNotes = computed(() => sortNotes(trashedNotes.value));
 
 
 function sortByTitle() {
@@ -270,36 +279,112 @@ onBeforeUnmount(() => {
         <HeaderMain/>
         <div class="flex flex-col flex-1 py-2 rounded-xl border border-text shadow-sm">
             <div class="p-6 flex flex-1 justify-between">
-                <div class="w-75 flex flex-col gap-2">
-                    <div class="flex h-10 rounded-lg border border-text px-2 items-center justify-between mb-4">
-                        <div class="flex items-center gap-2">
-                            <h2 class="font-sans text-xl">Заметки</h2>
-                            <button class="p-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
-                                title="Создать заметку" @click="isCreateModalOpen = true">
-                                <PlusIcon :size="20" />
-                            </button>
-                        </div>
-                        <div class="flex gap-1 items-center">
-                            <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
+                <div class="w-75 min-h-0 flex flex-col gap-3">
+
+                    <!--Заметки-->
+                    <div class="flex-1 min-h-0 flex flex-col rounded-lg border border-text p-2">
+                        <div class="flex h-10 shrink-0 items-center justify-between px-1 mb-2">
+                            <div class="flex items-center gap-2">
+                                <h2 class="font-sans text-xl">Заметки</h2>
+                                <button
+                                    class="p-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                    title="Создать заметку"
+                                    @click="isCreateModalOpen = true"
+                                >
+                                    <PlusIcon :size="20" />
+                                </button>
+                            </div>
+
+                            <div class="flex gap-1 items-center">
+                                <button
+                                    class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
                                     :class="sortBy === 'updated_at' ? 'bg-accent/75' : ''"
-                                    @click="sortByUpdatedAt" >
-                                <CalendarArrowUpIcon v-if="sortBy === 'updated_at' && sortDirection === 'asc'"/>
-                                <CalendarArrowDownIcon v-else/>
-                            </button>
-                            <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
+                                    @click="sortByUpdatedAt"
+                                >
+                                    <CalendarArrowUpIcon v-if="sortBy === 'updated_at' && sortDirection === 'asc'"/>
+                                    <CalendarArrowDownIcon v-else/>
+                                </button>
+
+                                <button
+                                    class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
                                     :class="sortBy === 'title' ? 'bg-accent/75' : ''"
-                                    @click="sortByTitle" >
-                                <ArrowDownZA v-if="sortBy === 'title' && sortDirection === 'desc'"/>
-                                <ArrowUpZA v-else/>
-                            </button>
+                                    @click="sortByTitle"
+                                >
+                                    <ArrowDownZA v-if="sortBy === 'title' && sortDirection === 'desc'"/>
+                                    <ArrowUpZA v-else/>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
+                            <div
+                                v-for="note in sortedNotes"
+                                :key="note.id"
+                                class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
+                                :class="{ 'bg-accent/75': selectedNote?.id === note.id && activeSection === 'notes' }"
+                                @click="selectNote(note, 'notes')"
+                            >
+                                <div
+                                    :style="{ backgroundColor: note.color }"
+                                    class="w-2 h-full shrink-0"
+                                />
+                                <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">
+                                    {{ note.title }}
+                                </h2>
+                            </div>
                         </div>
                     </div>
-                    <div class="h-11 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
-                         :class="{ 'bg-accent/75': selectedNote?.id === note.id }"
-                         v-for="note in sortedNotes" :key="note.id" @click="selectNote(note)">
-                        <div :style="{ backgroundColor: note?.color }" class="w-2 h-full shrink-0"/>
-                        <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">{{ note.title }}</h2>
+
+                    <!-- Архив -->
+                    <div class="h-28 shrink-0 flex flex-col rounded-lg border border-text p-2">
+                        <div class="h-10 shrink-0 flex items-center px-1 mb-2">
+                            <h2 class="font-sans text-xl">Архив</h2>
+                        </div>
+
+                        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
+                            <div
+                                v-for="note in sortedArchivedNotes"
+                                :key="note.id"
+                                class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
+                                :class="{ 'bg-accent/75': selectedNote?.id === note.id && activeSection === 'archive' }"
+                                @click="selectNote(note, 'archive')"
+                            >
+                                <div
+                                    :style="{ backgroundColor: note.color }"
+                                    class="w-2 h-full shrink-0"
+                                />
+                                <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">
+                                    {{ note.title }}
+                                </h2>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Корзина -->
+                    <div class="h-28 shrink-0 flex flex-col rounded-lg border border-text p-2">
+                        <div class="h-10 shrink-0 flex items-center px-1 mb-2">
+                            <h2 class="font-sans text-xl">Корзина</h2>
+                        </div>
+
+                        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
+                            <div
+                                v-for="note in sortedTrashedNotes"
+                                :key="note.id"
+                                class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
+                                :class="{ 'bg-accent/75': selectedNote?.id === note.id && activeSection === 'trash' }"
+                                @click="selectNote(note, 'trash')"
+                            >
+                                <div
+                                    :style="{ backgroundColor: note.color }"
+                                    class="w-2 h-full shrink-0"
+                                />
+                                <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">
+                                    {{ note.title }}
+                                </h2>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
                 <div class="flex flex-1 flex-col gap-2 mx-5">
                     <div class="w-full min-h-10 rounded-lg border border-text px-2 py-1 mb-4 flex items-center gap-3">

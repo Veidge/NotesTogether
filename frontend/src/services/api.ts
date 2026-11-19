@@ -111,3 +111,55 @@ export async function deleteNote(token: string, noteId: number): Promise<void> {
 
     return handleResponse<void>(response);
 }
+
+export async function getArchivedNotes(token: string): Promise<Note[]> {
+    const response = await fetch(`${API_URL}/notes/archive`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    return handleResponse<Note[]>(response);
+}
+
+export async function getTrashedNotes(token: string): Promise<Note[]> {
+    const response = await fetch(`${API_URL}/notes/trash`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    return handleResponse<Note[]>(response);
+}
+
+export async function archiveNote(token: string, noteId: number, isArchived: boolean): Promise<void> {
+    const response = await fetch(`${API_URL}/notes/${noteId}/archive`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ is_archived: isArchived })
+    });
+    return handleResponse<void>(response);
+}
+
+export async function restoreNote(token: string, noteId: number): Promise<Note> {
+    const response = await fetch(`${API_URL}/notes/${noteId}/restore`, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    return handleResponse<Note>(response);
+}
+
+export async function permanentlyDeleteNote(token: string, noteId: number): Promise<void> {
+    const response = await fetch(`${API_URL}/notes/${noteId}/permanent`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    return handleResponse<void>(response);
+}

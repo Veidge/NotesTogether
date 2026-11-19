@@ -1,6 +1,8 @@
 import {defineStore} from "pinia";
 import {getNotes, createNote as createNoteRequest, updateNote as updateNoteRequest,
-    deleteNote as deleteNoteRequest} from "../services/api.ts";
+    deleteNote as deleteNoteRequest,  getArchivedNotes, getTrashedNotes,
+    archiveNote as archiveNoteRequest, restoreNote as restoreNoteRequest,
+    permanentlyDeleteNote as permanentlyDeleteNoteRequest} from "../services/api.ts";
 
 export interface Note {
     id: number;
@@ -14,34 +16,54 @@ export interface Note {
 
 type NoteData = Pick<Note, "title" | "content" | "color">;
 type NoteChanges = Partial<NoteData>;
+export type NoteSection = "notes" | "archive" | "trash";
 
 export const useNotesStore = defineStore("notes", {
     state: () => ({
         listNotes: [] as Note[],
-        selectedNote: null as Note | null
+        archivedNotes: [] as Note[],
+        trashedNotes: [] as Note[],
+        selectedNote: null as Note | null,
+        activeSection: "notes" as NoteSection,
     }),
 
     actions: {
         async fetchNotes(token: string) {
-            const notes = await getNotes(token);
+            const [notes, archivedNotes, trashedNotes] = await Promise.all([
+                getNotes(token),
+                getArchivedNotes(token),
+                getTrashedNotes(token)
+            ]);
             this.listNotes = notes;
-            this.selectedNote = notes.find(note => note.id === this.selectedNote?.id) ?? notes[0] ?? null;
+            this.archivedNotes = archivedNotes;
+            this.trashedNotes = trashedNotes;
+
+            this.selectedNote = notes[0] ?? archivedNotes[0] ?? trashedNotes[0] ?? null;
+
+            if (this.selectedNote) {
+                this.activeSection = notes.length > 0 ? "notes"
+                    : archivedNotes.length > 0 ? "archive"
+                        : "trash";
+            }
         },
 
         async createNote(token: string, noteData: NoteData) {
+            if (this.activeSection !== "notes") return;
             const newNote = await createNoteRequest(token, noteData);
-
             this.listNotes.push(newNote);
             this.selectedNote = newNote;
         },
 
         async updateNote(token: string, noteId: number, changes: NoteChanges) {
             const updatedNote = await updateNoteRequest(token, noteId, changes);
-            const index = this.listNotes.findIndex(note => note.id === noteId);
-            if (index !== -1) {
-                this.listNotes[index] = updatedNote;
+            const noteLists = [this.listNotes, this.archivedNotes, this.trashedNotes];
+            for (const notes of noteLists) {
+                const index = notes.findIndex(note => note.id === noteId);
+                if (index !== -1) {
+                    notes[index] = updatedNote;
+                    break;
+                }
             }
-
             if (this.selectedNote?.id === noteId) {
                 this.selectedNote = updatedNote;
             }
@@ -49,14 +71,61 @@ export const useNotesStore = defineStore("notes", {
 
         async deleteNote(token: string, noteId: number) {
             await deleteNoteRequest(token, noteId);
-            this.listNotes = this.listNotes.filter(note => note.id !== noteId);
+            const source = this.activeSection === "archive" ? this.archivedNotes : this.listNotes;
+            const note = source.find(note => note.id === noteId);
+            if (note) {
+                this.trashedNotes.push(note);
+            }
             if (this.selectedNote?.id === noteId) {
-                this.selectedNote = this.listNotes[0] ?? null;
+                this.selectedNote = null;
+            }
+            const index = source.findIndex(note => note.id === noteId);
+            if (index !== -1) {
+                source.splice(index, 1);
             }
         },
 
-        selectNote(note: Note | null) {
+        async archiveNote(token: string, noteId: number, isArchived: boolean) {
+            await archiveNoteRequest(token, noteId, isArchived);
+            const source = isArchived ? this.listNotes : this.archivedNotes;
+            const destination = isArchived ? this.archivedNotes : this.listNotes;
+            const index = source.findIndex(note => note.id === noteId);
+
+            if (index !== -1) {
+                const [note] = source.splice(index, 1);
+                if (note) {
+                    destination.push({ ...note, is_archived: isArchived });
+                }
+            }
+            if (this.selectedNote?.id === noteId) {
+                this.selectedNote = null;
+            }
+        },
+
+        async restoreNote(token: string, noteId: number) {
+            const restoredNote = await restoreNoteRequest(token, noteId);
+            this.trashedNotes = this.trashedNotes.filter(note => note.id !== noteId);
+            if (restoredNote.is_archived) {
+                this.archivedNotes.push(restoredNote);
+            } else {
+                this.listNotes.push(restoredNote);
+            }
+            if (this.selectedNote?.id === noteId) {
+                this.selectedNote = null;
+            }
+        },
+
+        async permanentlyDeleteNote(token: string, noteId: number) {
+            await permanentlyDeleteNoteRequest(token, noteId);
+            this.trashedNotes = this.trashedNotes.filter(note => note.id !== noteId);
+            if (this.selectedNote?.id === noteId) {
+                this.selectedNote = null;
+            }
+        },
+
+        selectNote(note: Note | null, section: NoteSection) {
             this.selectedNote = note;
+            this.activeSection = section;
         }
     }
 });

@@ -11,6 +11,8 @@ import {storeToRefs} from "pinia";
 import { useAuthStore } from "../../stores/auth";
 import {useRouter} from "vue-router";
 import ColorPicker from "../ui/ColorPicker.vue";
+import { PlusIcon } from "@lucide/vue";
+import CreateNoteModal from "../ui/CreateNoteModal.vue";
 
 
 const router = useRouter();
@@ -25,6 +27,11 @@ const draftColor = ref("#B69C82");
 const isColorPickerOpen = ref(false);
 const isSavingColor = ref(false);
 const colorSaveError = ref("");
+
+const isCreateModalOpen = ref(false);
+const isCreating = ref(false);
+const createError = ref("");
+
 
 function openColorPicker() {
     if (!selectedNote.value) return;
@@ -189,6 +196,27 @@ function flushSave() {
     return saveQueue;
 }
 
+async function handleCreateNote(noteData: {
+    title: string;
+    content: string;
+    color: string;
+}) {
+    if (!authStore.token || isCreating.value) return;
+
+    isCreating.value = true;
+    createError.value = "";
+
+    try {
+        await notesStore.createNote(authStore.token, noteData);
+        isCreateModalOpen.value = false;
+    } catch (error) {
+        console.error("Не удалось создать заметку:", error);
+        createError.value = "Не удалось создать заметку. Попробуйте ещё раз.";
+    } finally {
+        isCreating.value = false;
+    }
+}
+
 watch(
     selectedNote,
     (note) => {
@@ -211,7 +239,6 @@ watch(
 onBeforeUnmount(() => {
     void flushSave();
 });
-
 </script>
 
 <template>
@@ -221,7 +248,13 @@ onBeforeUnmount(() => {
             <div class="p-6 flex flex-1 justify-between">
                 <div class="w-75 flex flex-col gap-2">
                     <div class="flex h-10 rounded-lg border border-text px-2 items-center justify-between mb-4">
-                        <h2 class="font-sans text-xl">Заметки</h2>
+                        <div class="flex items-center gap-2">
+                            <h2 class="font-sans text-xl">Заметки</h2>
+                            <button class="p-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                title="Создать заметку" @click="isCreateModalOpen = true">
+                                <PlusIcon :size="20" />
+                            </button>
+                        </div>
                         <div class="flex gap-1 items-center">
                             <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
                                     :class="sortBy === 'updated_at' ? 'bg-accent/75' : ''"
@@ -285,5 +318,11 @@ onBeforeUnmount(() => {
                 </div>
             </div>
         </div>
+        <CreateNoteModal
+            v-model="isCreateModalOpen"
+            :loading="isCreating"
+            :error="createError"
+            @create="handleCreateNote"
+        />
     </div>
 </template>

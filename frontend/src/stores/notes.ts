@@ -1,46 +1,29 @@
 import {defineStore} from "pinia";
+import {getNotes} from "../services/api.ts";
 
 export interface Note {
     id: number;
     title: string;
     content: string;
     color: string;
+    is_archived: boolean;
+    created_at: string;
     updated_at: string;
 }
 
 export const useNotesStore = defineStore("notes", {
-    state: () => {
-        const listNotes: Note[] = [
-            {
-                id: 1,
-                title: "Заметка 1",
-                content: "Текст заметки.",
-                color: "#cf6f16",
-                updated_at: "2026-11-17T14:30:00",
-            },
-            {
-                id: 2,
-                title: "Настроить рабочую среду frontend части",
-                content: "Окружение, структура, перенос backend части. Создание первичной вёрстки для проекта. " +
-                    "Подбор палитры, шрифтов.",
-                color: "#46097a",
-                updated_at: "2026-11-17T18:30:30",
-            },
-            {
-                id: 3,
-                title: "Посидеть вечером с кошкой",
-                content: "Осмотр задней лапы, подготовка мисок. Поставить стул для залаза и прыжков.",
-                color: "#3c3f47",
-                updated_at: "2026-11-17T19:55:32",
-            }
-        ];
-        return {
-            listNotes, selectedNote: listNotes[0] as Note | null
-        }
-
-    },
+    state: () => ({
+        listNotes: [] as Note[],
+        selectedNote: null as Note | null
+    }),
 
     actions: {
+        async fetchNotes(token: string) {
+            const notes = await getNotes(token);
+            this.listNotes = notes;
+            this.selectedNote = notes.find(note => note.id === this.selectedNote?.id) ?? notes[0] ?? null;
+        },
+
         selectNote(note: Note | null) {
             this.selectedNote = note;
         }

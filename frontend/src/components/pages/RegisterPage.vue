@@ -4,13 +4,14 @@ import * as z from 'zod'
 import {useForm} from "vee-validate"
 import HeaderBase from "../ui/HeaderBase.vue";
 import {useAuthStore} from "../../stores/auth";
+import {useRouter} from "vue-router";
 
 const formSchema = toTypedSchema(
     z.object({
         displayName: z.string().min(3, "Отображаемое имя должно содержать минимум 3 символа.")
-            .max(25, "Отображаемое имя должно содержать минимум 25 символов."),
+            .max(25, "Отображаемое имя должно содержать максимум 25 символов."),
         username: z.string().min(3, "Имя пользователя должно содержать минимум 3 символа.")
-            .max(25, "Имя пользователя должно содержать минимум 25 символов."),
+            .max(25, "Имя пользователя должно содержать максимум 25 символов."),
         password: z.string().min(8, "Пароль должен содержать минимум 8 символов."),
         confirmPassword: z.string().min(8, "Пароль должен содержать минимум 8 символов."),
     }).refine((data) => data.password === data.confirmPassword, {
@@ -29,13 +30,15 @@ const [password, passwordAttrs] = form.defineField('password');
 const [confirmPassword, confirmPasswordAttrs] = form.defineField('confirmPassword');
 
 const authStore = useAuthStore();
+const router = useRouter();
 
-const onSubmit = form.handleSubmit((values) => {
-    authStore.register({
+const onSubmit = form.handleSubmit(async (values) => {
+    await authStore.register({
         displayName: values.displayName,
         username: values.username,
         password: values.password
-    })
+    });
+    await router.push({ name: 'login' });
 })
 
 </script>

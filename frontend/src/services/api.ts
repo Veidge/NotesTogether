@@ -1,3 +1,6 @@
+import type {Note} from "../stores/notes.ts";
+import {handleError} from "vue";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export interface ApiUser {
@@ -56,4 +59,15 @@ async function handleResponse<T>(response: Response): Promise<T> {
         throw error;
     }
     return response.json();
+}
+
+
+export async function getNotes(token: string): Promise<Note[]> {
+    const response = await fetch(`${API_URL}/notes`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        }
+    });
+    return handleResponse<Note[]>(response);
 }

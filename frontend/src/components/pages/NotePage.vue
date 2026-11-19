@@ -4,40 +4,39 @@ import { ArrowUpZA } from "@lucide/vue";
 import { ArrowDownZA } from "@lucide/vue";
 import { CalendarArrowDownIcon } from "@lucide/vue";
 import { CalendarArrowUpIcon } from "@lucide/vue";
-import {computed, ref, watch} from "vue";
+import {computed, onMounted, ref, watch} from "vue";
 import type { Note } from '../../stores/notes';
-import { useNotesStore} from '../../stores/notes';
+import { useNotesStore } from '../../stores/notes';
 import {storeToRefs} from "pinia";
-//
-// const listNotes = ref([
-//     {
-//         id: 1,
-//         title: "Заметка 1",
-//         content: "Текст заметки.",
-//         color: "#cf6f16",
-//         updated_at: "2026-11-17T14:30:00",
-//     },
-//     {
-//         id: 2,
-//         title: "Настроить рабочую среду frontend части",
-//         content: "Окружение, структура, перенос backend части. Создание первичной вёрстки для проекта. " +
-//             "Подбор палитры, шрифтов.",
-//         color: "#46097a",
-//         updated_at: "2026-11-17T18:30:30",
-//     },
-//     {
-//         id: 3,
-//         title: "Посидеть вечером с кошкой",
-//         content: "Осмотр задней лапы, подготовка мисок. Поставить стул для залаза и прыжков.",
-//         color: "#3c3f47",
-//         updated_at: "2026-11-17T19:55:32",
-//     }
-// ]);
+import { useAuthStore } from "../../stores/auth";
+import {useRouter} from "vue-router";
 
+
+const router = useRouter();
 const notesStore = useNotesStore();
+const authStore = useAuthStore();
+
 const { listNotes, selectedNote } = storeToRefs(notesStore);
 const sortBy = ref<"title" | "updated_at">("updated_at");
 const sortDirection = ref<"asc" | "desc">("desc");
+
+onMounted(async () => {
+    if (!authStore.token) {
+        await router.replace({ name: "login" });
+        return;
+    }
+    try {
+        await notesStore.fetchNotes(authStore.token);
+    }
+    catch (error) {
+        if (error instanceof Error && "status" in error && error.status === 401) {
+            authStore.logout();
+            await router.replace({ name: "login" });
+            return;
+        }
+        console.error("Не удалось загрузить заметки: ", error);
+    }
+});
 
 function selectNote(note: Note) {
     notesStore.selectNote(note);
@@ -53,14 +52,6 @@ const sortedNotes = computed(() => {
     });
 });
 
-watch(sortedNotes, (notes) => {
-    if (notes.length > 0) {
-        notesStore.selectNote(notes[0] ?? null);
-    }
-    else {
-        notesStore.selectNote(null);
-    }
-}, { immediate: true });
 
 function sortByTitle() {
     if (sortBy.value === "title") {

@@ -250,6 +250,76 @@ async function handleDeleteNote() {
     }
 }
 
+async function handleArchiveNote() {
+    const note = selectedNote.value;
+    if (!note || !authStore.token || isDeleting.value || isSavingColor.value) return;
+    isDeleting.value = true;
+    deleteError.value = "";
+    try {
+        await flushSave();
+        if (saveStatus.value === "error") {
+            deleteError.value = "Сначала необходимо сохранить изменения.";
+            return;
+        }
+        await notesStore.archiveNote(authStore.token, note.id, true);
+    } catch (error) {
+        console.error("Не удалось переместить заметку в архив:", error);
+        deleteError.value = "Не удалось переместить заметку в архив.";
+    } finally {
+        isDeleting.value = false;
+    }
+}
+
+async function handleUnarchiveNote() {
+    const note = selectedNote.value;
+    if (!note || !authStore.token || isDeleting.value || isSavingColor.value) return;
+    isDeleting.value = true;
+    deleteError.value = "";
+    try {
+        await flushSave();
+        if (saveStatus.value === "error") {
+            deleteError.value = "Сначала необходимо сохранить изменения.";
+            return;
+        }
+        await notesStore.archiveNote(authStore.token, note.id, false);
+    } catch (error) {
+        console.error("Не удалось вернуть заметку из архива:", error);
+        deleteError.value = "Не удалось вернуть заметку из архива.";
+    } finally {
+        isDeleting.value = false;
+    }
+}
+
+async function handleRestoreNote() {
+    const note = selectedNote.value;
+    if (!note || !authStore.token || isDeleting.value) return;
+    isDeleting.value = true;
+    deleteError.value = "";
+    try {
+        await notesStore.restoreNote(authStore.token, note.id);
+    } catch (error) {
+        console.error("Не удалось восстановить заметку:", error);
+        deleteError.value = "Не удалось восстановить заметку.";
+    } finally {
+        isDeleting.value = false;
+    }
+}
+
+async function handlePermanentlyDeleteNote() {
+    const note = selectedNote.value;
+    if (!note || !authStore.token || isDeleting.value) return;
+    isDeleting.value = true;
+    deleteError.value = "";
+    try {
+        await notesStore.permanentlyDeleteNote(authStore.token, note.id);
+    } catch (error) {
+        console.error("Не удалось удалить заметку окончательно:", error);
+        deleteError.value = "Не удалось удалить заметку окончательно.";
+    } finally {
+        isDeleting.value = false;
+    }
+}
+
 watch(
     selectedNote,
     (note) => {
@@ -388,17 +458,76 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="flex flex-1 flex-col gap-2 mx-5">
                     <div class="w-full min-h-10 rounded-lg border border-text px-2 py-1 mb-4 flex items-center gap-3">
-                        <button class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
-                            :style="{ backgroundColor: selectedNote?.color }" title="Изменить цвет заметки"
-                            @click="openColorPicker"/>
-                        <input v-model="editTitle" class="font-sans text-xl w-full outline-none bg-transparent"
-                            placeholder="Название заметки" maxlength="50"/>
+
                         <button
+                            v-if="activeSection !== 'trash'"
+                            class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
+                            :style="{ backgroundColor: selectedNote?.color }"
+                            title="Изменить цвет заметки"
+                            @click="openColorPicker"
+                        />
+
+                        <!-- Заголовок -->
+                        <input
+                            v-model="editTitle"
+                            class="font-sans text-xl w-full outline-none bg-transparent disabled:opacity-70"
+                            placeholder="Название заметки"
+                            maxlength="50"
+                            :disabled="!selectedNote || activeSection === 'trash'"
+                        />
+
+                        <!-- Действия для обычных заметок -->
+                        <button
+                            v-if="activeSection === 'notes'"
+                            class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
+                            title="Переместить в архив"
+                            :disabled="!selectedNote || isDeleting || isSavingColor"
+                            @click="handleArchiveNote"
+                        >
+                            В архив
+                        </button>
+
+                        <!-- Действия для архива -->
+                        <button
+                            v-else-if="activeSection === 'archive'"
+                            class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
+                            title="Вернуть в заметки"
+                            :disabled="!selectedNote || isDeleting || isSavingColor"
+                            @click="handleUnarchiveNote"
+                        >
+                            Вернуть
+                        </button>
+
+                        <!-- Перемещение в корзину -->
+                        <button
+                            v-if="activeSection !== 'trash'"
                             class="shrink-0 p-1 rounded-md hover:bg-red-200/70 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                            title="Переместить в корзину" :disabled="!selectedNote || isDeleting || isSavingColor"
-                            @click="handleDeleteNote">
+                            title="Переместить в корзину"
+                            :disabled="!selectedNote || isDeleting || isSavingColor"
+                            @click="handleDeleteNote"
+                        >
                             <XIcon :size="20" />
                         </button>
+
+                        <!-- Действия для корзины -->
+                        <template v-else>
+                            <button
+                                class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                title="Восстановить заметку"
+                                :disabled="!selectedNote"
+                                @click="handleRestoreNote"
+                            >
+                                Восстановить
+                            </button>
+                            <button
+                                class="shrink-0 px-2 py-1 rounded-md hover:bg-red-200/70 transition-colors cursor-pointer"
+                                title="Удалить окончательно"
+                                :disabled="!selectedNote"
+                                @click="handlePermanentlyDeleteNote"
+                            >
+                                Удалить
+                            </button>
+                        </template>
                     </div>
 
                     <p class="text-xs text-text/60 text-right -mt-3 mb-1">
@@ -410,27 +539,36 @@ onBeforeUnmount(() => {
                     <p v-if="deleteError" class="text-xs text-red-700 text-right -mt-3 mb-1">
                         {{ deleteError }}
                     </p>
+                    <div class="relative">
 
-                    <div v-if="isColorPickerOpen"
-                         class="mb-4 p-3 rounded-lg border border-text/40 bg-surface flex flex-col gap-3 w-fit">
-                        <ColorPicker v-model="draftColor" />
-                        <div class="flex gap-2">
-                            <button
-                                class="px-3 py-1 rounded-md bg-accent/60 hover:bg-accent transition-colors cursor-pointer"
-                                :disabled="isSavingColor" @click="saveNoteColor">
-                                {{ isSavingColor ? "Сохранение..." : "Применить" }}
-                            </button>
+                        <div v-if="isColorPickerOpen && activeSection !== 'trash'"
+                             class="absolute left-0 top-full z-20 mt-2 p-3 rounded-lg border border-text/40 bg-surface shadow-md flex flex-col gap-3 w-fit">
+                            <ColorPicker v-model="draftColor" />
+                            <div class="flex gap-2">
+                                <button
+                                    class="px-3 py-1 rounded-md bg-accent/60 hover:bg-accent transition-colors cursor-pointer"
+                                    :disabled="isSavingColor"
+                                    @click="saveNoteColor"
+                                >
+                                    {{ isSavingColor ? "Сохранение..." : "Применить" }}
+                                </button>
 
-                            <button class="px-3 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
-                                :disabled="isSavingColor" @click="cancelColorChange">Отмена</button>
+                                <button
+                                    class="px-3 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                    :disabled="isSavingColor"
+                                    @click="cancelColorChange"
+                                >
+                                    Отмена
+                                </button>
+                            </div>
+                            <p v-if="colorSaveError" class="text-sm text-red-700">{{ colorSaveError }}</p>
                         </div>
-                        <p v-if="colorSaveError" class="text-sm text-red-700">{{ colorSaveError }}</p>
                     </div>
                     <div class="flex-1 rounded-sm border border-black-200 p-4">
-                        <textarea v-model="editContent" :disabled="!selectedNote || isDeleting"
-                            class="w-full h-full resize-none outline-none bg-transparent font-sans"
-                            placeholder="Начните писать..."
-                        />
+                        <textarea v-model="editContent"
+                                  :disabled="!selectedNote || isDeleting || activeSection === 'trash'"
+                                  class="w-full h-full resize-none outline-none bg-transparent font-sans"
+                                  placeholder="Начните писать..."/>
                     </div>
                 </div>
             </div>

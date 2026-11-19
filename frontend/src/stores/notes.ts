@@ -42,9 +42,10 @@ export const useNotesStore = defineStore("notes", {
             this.selectedNote = notes[0] ?? archivedNotes[0] ?? trashedNotes[0] ?? null;
 
             if (this.selectedNote) {
-                this.activeSection = notes.length > 0 ? "notes"
-                    : archivedNotes.length > 0 ? "archive"
-                        : "trash";
+                this.activeSection = notes.length > 0 ? "notes" : archivedNotes.length > 0 ? "archive" : "trash";
+            }
+            else {
+                this.activeSection = "notes";
             }
         },
 

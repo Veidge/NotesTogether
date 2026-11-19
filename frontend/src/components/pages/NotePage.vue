@@ -385,6 +385,11 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
+                            <div v-if="sortedNotes.length === 0"
+                                 class="flex-1 flex flex-col items-center justify-center text-center text-text/65">
+                                <p class="font-heading font-bold text-base">Пока нет заметок</p>
+                                <p class="text-sm">Создайте свою первую заметку</p>
+                            </div>
                             <div v-for="note in sortedNotes" :key="note.id"
                                 class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
                                 :class="{ 'bg-accent/75': selectedNote?.id === note.id && activeSection === 'notes' }"
@@ -403,6 +408,10 @@ onBeforeUnmount(() => {
                             <h2 class="font-sans text-xl">Архив</h2>
                         </div>
 
+                        <div v-if="sortedArchivedNotes.length === 0"
+                             class="flex-1 flex items-center justify-center text-sm text-text/65">
+                            Архив пуст
+                        </div>
                         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
                             <div v-for="note in sortedArchivedNotes" :key="note.id"
                                 class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
@@ -421,7 +430,11 @@ onBeforeUnmount(() => {
                         <div class="h-10 shrink-0 flex items-center px-1 mb-2">
                             <h2 class="font-sans text-xl">Корзина</h2>
                         </div>
-
+                        
+                        <div v-if="sortedTrashedNotes.length === 0"
+                             class="flex-1 flex items-center justify-center text-sm text-text/65">
+                            Корзина пуста
+                        </div>
                         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
                             <div v-for="note in sortedTrashedNotes" :key="note.id"
                                 class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"

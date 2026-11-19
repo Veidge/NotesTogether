@@ -10,6 +10,6 @@ const color = defineModel<string>({ required: true });
         v-model="color"
         picker="square"
         model="hex"
-        menu-position="right"
+        menu-position="top"
     />
 </template>

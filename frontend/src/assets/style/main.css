@@ -33,6 +33,6 @@
   --color-text: var(--nt-text);
 }
 
-.verte__menu-origin--right .verte__menu {
-  margin-left: -10px;
+.verte__menu-origin--top.verte__menu-origin--active {
+  transform: translate(-210px, 145px) !important;
 }

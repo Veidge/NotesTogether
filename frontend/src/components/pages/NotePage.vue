@@ -4,7 +4,7 @@ import { ArrowUpZA } from "@lucide/vue";
 import { ArrowDownZA } from "@lucide/vue";
 import { CalendarArrowDownIcon } from "@lucide/vue";
 import { CalendarArrowUpIcon } from "@lucide/vue";
-import {computed, onMounted, ref, watch} from "vue";
+import {computed, onMounted, ref, watch, onBeforeUnmount} from "vue";
 import type { Note } from '../../stores/notes';
 import { useNotesStore } from '../../stores/notes';
 import {storeToRefs} from "pinia";
@@ -66,6 +66,21 @@ watch(selectedNote, (note) => {
     isColorPickerOpen.value = false;
 });
 
+const editTitle = ref("");
+const editContent = ref("");
+
+const saveStatus = ref<"idle" | "editing" | "saving" | "saved" | "error">("idle");
+
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let pendingSave: {
+    noteId: number;
+    title: string;
+    content: string;
+} | null = null;
+
+let isSyncingEditor = false;
+let saveQueue = Promise.resolve();
+
 onMounted(async () => {
     if (!authStore.token) {
         await router.replace({ name: "login" });
@@ -121,6 +136,82 @@ function sortByUpdatedAt() {
     }
 }
 
+function scheduleSave() {
+    if (isSyncingEditor || !selectedNote.value) return;
+
+    pendingSave = {
+        noteId: selectedNote.value.id,
+        title: editTitle.value,
+        content: editContent.value
+    };
+
+    saveStatus.value = "editing";
+
+    clearTimeout(saveTimer);
+
+    saveTimer = setTimeout(() => {
+        void flushSave();
+    }, 800);
+}
+
+function flushSave() {
+    clearTimeout(saveTimer);
+    if (!pendingSave || !authStore.token) return saveQueue;
+    const changes = pendingSave;
+    pendingSave = null;
+
+    saveQueue = saveQueue.then(async () => {
+        if (selectedNote.value?.id === changes.noteId) {
+            saveStatus.value = "saving";
+        }
+        try {
+            await notesStore.updateNote(
+                authStore.token!,
+                changes.noteId,
+                {
+                    title: changes.title,
+                    content: changes.content
+                }
+            );
+            if (
+                selectedNote.value?.id === changes.noteId &&
+                !pendingSave
+            ) {
+                saveStatus.value = "saved";
+            }
+        } catch (error) {
+            console.error("Не удалось сохранить заметку:", error);
+            if (selectedNote.value?.id === changes.noteId) {
+                saveStatus.value = "error";
+            }
+        }
+    });
+    return saveQueue;
+}
+
+watch(
+    selectedNote,
+    (note) => {
+        void flushSave();
+        isSyncingEditor = true;
+        editTitle.value = note?.title ?? "";
+        editContent.value = note?.content ?? "";
+        saveStatus.value = "idle";
+        isSyncingEditor = false;
+    },
+    { immediate: true }
+);
+
+watch(
+    [editTitle, editContent],
+    scheduleSave,
+    { flush: "sync" }
+);
+
+onBeforeUnmount(() => {
+    void flushSave();
+});
+
 </script>
 
 <template>
@@ -158,9 +249,16 @@ function sortByUpdatedAt() {
                         <button class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
                             :style="{ backgroundColor: selectedNote?.color }" title="Изменить цвет заметки"
                             @click="openColorPicker"/>
-
-                        <h2 class="font-sans text-xl">{{ selectedNote?.title }}</h2>
+                        <input v-model="editTitle" class="font-sans text-xl w-full outline-none bg-transparent"
+                            placeholder="Название заметки" maxlength="50"/>
                     </div>
+
+                    <p class="text-xs text-text/60 text-right -mt-3 mb-1">
+                        <span v-if="saveStatus === 'editing'">Есть несохранённые изменения</span>
+                        <span v-else-if="saveStatus === 'saving'">Сохранение...</span>
+                        <span v-else-if="saveStatus === 'saved'">Сохранено</span>
+                        <span v-else-if="saveStatus === 'error'" class="text-red-700">Ошибка сохранения</span>
+                    </p>
 
                     <div v-if="isColorPickerOpen"
                          class="mb-4 p-3 rounded-lg border border-text/40 bg-surface flex flex-col gap-3 w-fit">
@@ -178,7 +276,11 @@ function sortByUpdatedAt() {
                         <p v-if="colorSaveError" class="text-sm text-red-700">{{ colorSaveError }}</p>
                     </div>
                     <div class="flex-1 rounded-sm border border-black-200 p-4">
-                        <h3>{{ selectedNote?.content }}</h3>
+                        <textarea
+                            v-model="editContent"
+                            class="w-full h-full resize-none outline-none bg-transparent font-sans"
+                            placeholder="Начните писать..."
+                        />
                     </div>
                 </div>
             </div>

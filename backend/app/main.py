@@ -60,6 +60,7 @@ def build_note_response(note: Note, user_note: NoteUser) -> NoteResponse:
     return NoteResponse(
         id=note.id,
         title=note.title,
+        is_owner=note.owner_id == user_note.user_id,
         content=note.content,
         color=note.color,
         is_archived=user_note.is_archived,

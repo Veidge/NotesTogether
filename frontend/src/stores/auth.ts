@@ -36,7 +36,6 @@ export const useAuthStore = defineStore("auth", {
             localStorage.removeItem("token");
         },
         async login(authData: UserLogin) {
-            console.log("Вызван login:", authData)
             const tokenResponse  = await login(authData.username, authData.password);
             this.token = tokenResponse.access_token
             localStorage.setItem("token", tokenResponse.access_token)
@@ -44,7 +43,6 @@ export const useAuthStore = defineStore("auth", {
             this.user = { displayName: userResponse.display_name, username: userResponse.username };
         },
         async register(registerData: UserRegister) {
-            console.log("Вызван register:", registerData);
             const userResponse = await register(registerData.displayName, registerData.username, registerData.password);
             this.user = { displayName: userResponse.display_name, username: userResponse.username };
         },

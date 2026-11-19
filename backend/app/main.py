@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models import User, Note, Tag, NoteTag, NoteUser
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
     TagResponse, TagCreate, TagUpdate, NoteArchive, UserSharing, NoteUserResponse, UserRoleUpdate
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -19,6 +20,13 @@ ALGORITHM = os.getenv("ALGORITHM")
 EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 password_hash = PasswordHash.recommended()
 security = HTTPBearer()
 

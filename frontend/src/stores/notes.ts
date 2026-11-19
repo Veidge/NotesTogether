@@ -7,6 +7,7 @@ import {getNotes, createNote as createNoteRequest, updateNote as updateNoteReque
 export interface Note {
     id: number;
     title: string;
+    is_owner: boolean;
     content: string;
     color: string;
     is_archived: boolean;

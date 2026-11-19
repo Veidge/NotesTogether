@@ -308,6 +308,11 @@ async function handleRestoreNote() {
 async function handlePermanentlyDeleteNote() {
     const note = selectedNote.value;
     if (!note || !authStore.token || isDeleting.value) return;
+    const confirmed = window.confirm(
+        `Вы уверены, что хотите безвозвратно удалить заметку «${note.title}»? Восстановить её будет невозможно.`
+    );
+    if (!confirmed) return;
+
     isDeleting.value = true;
     deleteError.value = "";
     try {
@@ -356,30 +361,23 @@ onBeforeUnmount(() => {
                         <div class="flex h-10 shrink-0 items-center justify-between px-1 mb-2">
                             <div class="flex items-center gap-2">
                                 <h2 class="font-sans text-xl">Заметки</h2>
-                                <button
-                                    class="p-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
-                                    title="Создать заметку"
-                                    @click="isCreateModalOpen = true"
-                                >
+                                <button class="p-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                    title="Создать заметку" @click="isCreateModalOpen = true">
                                     <PlusIcon :size="20" />
                                 </button>
                             </div>
 
                             <div class="flex gap-1 items-center">
-                                <button
-                                    class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
+                                <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
                                     :class="sortBy === 'updated_at' ? 'bg-accent/75' : ''"
-                                    @click="sortByUpdatedAt"
-                                >
+                                    @click="sortByUpdatedAt">
                                     <CalendarArrowUpIcon v-if="sortBy === 'updated_at' && sortDirection === 'asc'"/>
                                     <CalendarArrowDownIcon v-else/>
                                 </button>
 
-                                <button
-                                    class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
+                                <button class="cursor-pointer hover:bg-accent/35 transition-colors p-1 rounded-md"
                                     :class="sortBy === 'title' ? 'bg-accent/75' : ''"
-                                    @click="sortByTitle"
-                                >
+                                    @click="sortByTitle">
                                     <ArrowDownZA v-if="sortBy === 'title' && sortDirection === 'desc'"/>
                                     <ArrowUpZA v-else/>
                                 </button>
@@ -387,17 +385,11 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
-                            <div
-                                v-for="note in sortedNotes"
-                                :key="note.id"
+                            <div v-for="note in sortedNotes" :key="note.id"
                                 class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
                                 :class="{ 'bg-accent/75': selectedNote?.id === note.id && activeSection === 'notes' }"
-                                @click="selectNote(note, 'notes')"
-                            >
-                                <div
-                                    :style="{ backgroundColor: note.color }"
-                                    class="w-2 h-full shrink-0"
-                                />
+                                @click="selectNote(note, 'notes')">
+                                <div :style="{ backgroundColor: note.color }" class="w-2 h-full shrink-0"/>
                                 <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">
                                     {{ note.title }}
                                 </h2>
@@ -412,17 +404,11 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
-                            <div
-                                v-for="note in sortedArchivedNotes"
-                                :key="note.id"
+                            <div v-for="note in sortedArchivedNotes" :key="note.id"
                                 class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
                                 :class="{ 'bg-accent/75': selectedNote?.id === note.id && activeSection === 'archive' }"
-                                @click="selectNote(note, 'archive')"
-                            >
-                                <div
-                                    :style="{ backgroundColor: note.color }"
-                                    class="w-2 h-full shrink-0"
-                                />
+                                @click="selectNote(note, 'archive')">
+                                <div :style="{ backgroundColor: note.color }" class="w-2 h-full shrink-0"/>
                                 <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">
                                     {{ note.title }}
                                 </h2>
@@ -437,17 +423,11 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2">
-                            <div
-                                v-for="note in sortedTrashedNotes"
-                                :key="note.id"
+                            <div v-for="note in sortedTrashedNotes" :key="note.id"
                                 class="h-11 shrink-0 flex items-center rounded-sm border border-text cursor-pointer hover:bg-accent/35 transition-colors"
                                 :class="{ 'bg-accent/75': selectedNote?.id === note.id && activeSection === 'trash' }"
-                                @click="selectNote(note, 'trash')"
-                            >
-                                <div
-                                    :style="{ backgroundColor: note.color }"
-                                    class="w-2 h-full shrink-0"
-                                />
+                                @click="selectNote(note, 'trash')">
+                                <div :style="{ backgroundColor: note.color }" class="w-2 h-full shrink-0"/>
                                 <h2 class="font-heading font-bold px-2 wrap-break-word leading-5">
                                     {{ note.title }}
                                 </h2>
@@ -458,73 +438,50 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="flex flex-1 flex-col gap-2 mx-5">
                     <div class="w-full min-h-10 rounded-lg border border-text px-2 py-1 mb-4 flex items-center gap-3">
-
-                        <button
-                            v-if="activeSection !== 'trash'"
-                            class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
-                            :style="{ backgroundColor: selectedNote?.color }"
-                            title="Изменить цвет заметки"
-                            @click="openColorPicker"
-                        />
+                        <button v-if="activeSection !== 'trash'" class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
+                            :style="{ backgroundColor: selectedNote?.color }" title="Изменить цвет заметки"
+                            @click="openColorPicker"/>
 
                         <!-- Заголовок -->
-                        <input
-                            v-model="editTitle"
-                            class="font-sans text-xl w-full outline-none bg-transparent disabled:opacity-70"
-                            placeholder="Название заметки"
-                            maxlength="50"
-                            :disabled="!selectedNote || activeSection === 'trash'"
-                        />
+                        <input v-model="editTitle" class="font-sans text-xl w-full outline-none bg-transparent disabled:opacity-70"
+                            placeholder="Название заметки" maxlength="50" :disabled="!selectedNote || activeSection === 'trash'"/>
 
                         <!-- Действия для обычных заметок -->
-                        <button
-                            v-if="activeSection === 'notes'"
+                        <button v-if="activeSection === 'notes'"
                             class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
-                            title="Переместить в архив"
-                            :disabled="!selectedNote || isDeleting || isSavingColor"
-                            @click="handleArchiveNote"
-                        >
+                            title="Переместить в архив" :disabled="!selectedNote || isDeleting || isSavingColor"
+                            @click="handleArchiveNote">
                             В архив
                         </button>
 
                         <!-- Действия для архива -->
-                        <button
-                            v-else-if="activeSection === 'archive'"
+                        <button v-else-if="activeSection === 'archive'"
                             class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
-                            title="Вернуть в заметки"
-                            :disabled="!selectedNote || isDeleting || isSavingColor"
-                            @click="handleUnarchiveNote"
-                        >
+                            title="Вернуть в заметки" :disabled="!selectedNote || isDeleting || isSavingColor"
+                            @click="handleUnarchiveNote">
                             Вернуть
                         </button>
 
                         <!-- Перемещение в корзину -->
-                        <button
-                            v-if="activeSection !== 'trash'"
+                        <button v-if="activeSection !== 'trash'"
                             class="shrink-0 p-1 rounded-md hover:bg-red-200/70 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                            title="Переместить в корзину"
-                            :disabled="!selectedNote || isDeleting || isSavingColor"
-                            @click="handleDeleteNote"
-                        >
+                            title="Переместить в корзину" :disabled="!selectedNote || isDeleting || isSavingColor"
+                            @click="handleDeleteNote">
                             <XIcon :size="20" />
                         </button>
 
                         <!-- Действия для корзины -->
                         <template v-else>
-                            <button
-                                class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
-                                title="Восстановить заметку"
-                                :disabled="!selectedNote"
-                                @click="handleRestoreNote"
-                            >
+                            <button class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                title="Восстановить заметку" :disabled="!selectedNote"
+                                @click="handleRestoreNote">
                                 Восстановить
                             </button>
-                            <button
-                                class="shrink-0 px-2 py-1 rounded-md hover:bg-red-200/70 transition-colors cursor-pointer"
-                                title="Удалить окончательно"
-                                :disabled="!selectedNote"
-                                @click="handlePermanentlyDeleteNote"
-                            >
+                            <button class="shrink-0 px-2 py-1 rounded-md hover:bg-red-200/70 transition-colors
+                            cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                    :title="selectedNote?.is_owner ? 'Удалить окончательно' : 'Удалить невозможно, обратитесь к владельцу'"
+                                    :disabled="!selectedNote?.is_owner || isDeleting"
+                                @click="handlePermanentlyDeleteNote">
                                 Удалить
                             </button>
                         </template>

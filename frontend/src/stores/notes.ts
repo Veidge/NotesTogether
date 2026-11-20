@@ -171,6 +171,9 @@ export const useNotesStore = defineStore("notes", {
         },
 
         selectNote(note: Note | null, section: NoteSection) {
+            if (this.selectedNote?.id === note?.id && this.activeSection === section) {
+                return;
+            }
             this.selectedNote = note;
             this.activeSection = section;
             this.noteTags = [];

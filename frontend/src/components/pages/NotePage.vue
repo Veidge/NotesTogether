@@ -575,7 +575,7 @@ onBeforeUnmount(() => {
                         </template>
                     </div>
 
-                    <p class="text-xs text-text/60 text-right -mt-3 mb-1">
+                    <p class="text-xs text-text/60 text-right -mt-3">
                         <span v-if="saveStatus === 'editing'">Есть несохранённые изменения</span>
                         <span v-else-if="saveStatus === 'saving'">Сохранение...</span>
                         <span v-else-if="saveStatus === 'saved'">Сохранено</span>
@@ -623,7 +623,7 @@ onBeforeUnmount(() => {
 
                             <div class="relative" ref="tagDropdown">
                                 <button
-                                    class="w-7 h-7 flex items-center justify-center rounded-full border border-text/30 hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
+                                    class="w-6 h-6 flex items-center justify-center rounded-full border border-text/30 hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
                                     title="Добавить тег"
                                     :disabled="isUpdatingTag"
                                     @click.stop="isTagListOpen = !isTagListOpen">

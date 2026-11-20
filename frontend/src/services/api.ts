@@ -20,6 +20,13 @@ export interface NoteSearchParams {
     search: string;
 }
 
+export interface NoteUserResponse {
+    user_id: number;
+    display_name: string;
+    username: string;
+    is_editor: boolean;
+}
+
 export async function getUser(token: string): Promise<ApiUser> {
     const response = await fetch(`${API_URL}/auth/me`, {
         method: 'GET',
@@ -248,5 +255,63 @@ export async function removeTagFromNote(token: string, noteId: number, tagId: nu
             Authorization: `Bearer ${token}`
         }
     });
+    return handleResponse<void>(response);
+}
+
+export async function getNoteUsers(token: string, noteId: number): Promise<NoteUserResponse[]> {
+    const response = await fetch(`${API_URL}/notes/${noteId}/users`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        }
+    });
+    return handleResponse<NoteUserResponse[]>(response);
+}
+
+export async function shareNote(token: string, noteId: number, username: string, isEditor: boolean): Promise<void> {
+    const response = await fetch(`${API_URL}/notes/${noteId}/users`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+            username,
+            is_editor: isEditor,
+        }),
+    });
+    if (!response.ok) {
+        await handleResponse<void>(response);
+    }
+}
+
+export async function updateNoteUserRole(token: string, noteId: number,
+                                         userId: number, isEditor: boolean): Promise<NoteUserResponse> {
+    const response = await fetch(
+        `${API_URL}/notes/${noteId}/users/${userId}`,
+        {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                is_editor: isEditor,
+            }),
+        }
+    );
+    return handleResponse<NoteUserResponse>(response);
+}
+
+export async function removeNoteUser(token: string, noteId: number, userId: number): Promise<void> {
+    const response = await fetch(
+        `${API_URL}/notes/${noteId}/users/${userId}`,
+        {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            }
+        }
+    );
     return handleResponse<void>(response);
 }

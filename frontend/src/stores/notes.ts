@@ -5,7 +5,10 @@ import {getNotes, createNote as createNoteRequest, updateNote as updateNoteReque
     permanentlyDeleteNote as permanentlyDeleteNoteRequest, getTags, getNoteTags,
     createTag as createTagRequest, updateTag as updateTagRequest, deleteTag as deleteTagRequest,
     addTagToNote as addTagToNoteRequest, removeTagFromNote as removeTagFromNoteRequest,
-    type NoteSearchParams
+    type NoteSearchParams, type NoteUserResponse,
+    getNoteUsers, shareNote as shareNoteRequest,
+    updateNoteUserRole as updateNoteUserRoleRequest,
+    removeNoteUser as removeNoteUserRequest,
 } from "../services/api.ts";
 
 export interface Note {
@@ -38,6 +41,7 @@ export const useNotesStore = defineStore("notes", {
         activeSection: "notes" as NoteSection,
         tags: [] as Tag[],
         noteTags: [] as Tag[],
+        noteUsers: [] as NoteUserResponse[],
     }),
 
     actions: {
@@ -87,6 +91,7 @@ export const useNotesStore = defineStore("notes", {
                 }
             }
             this.noteTags = [];
+            this.noteUsers = [];
         },
 
         async createNote(token: string, noteData: NoteData) {
@@ -168,6 +173,8 @@ export const useNotesStore = defineStore("notes", {
         selectNote(note: Note | null, section: NoteSection) {
             this.selectedNote = note;
             this.activeSection = section;
+            this.noteTags = [];
+            this.noteUsers = [];
         },
 
         async fetchTags(token: string) {
@@ -215,6 +222,39 @@ export const useNotesStore = defineStore("notes", {
         async removeTagFromNote(token: string, noteId: number, tagId: number) {
             await removeTagFromNoteRequest(token, noteId, tagId);
             this.noteTags = this.noteTags.filter(tag => tag.id !== tagId);
+        },
+
+        async fetchNoteUsers(token: string, noteId: number) {
+            const users = await getNoteUsers(token, noteId);
+            if (this.selectedNote?.id === noteId && this.activeSection !== "trash") {
+                this.noteUsers = users;
+            }
+        },
+
+        async shareNote(token: string, noteId: number, username: string, isEditor: boolean) {
+            await shareNoteRequest(token, noteId, username, isEditor);
+            await this.fetchNoteUsers(token, noteId);
+        },
+
+        async updateNoteUserRole(token: string, noteId: number, userId: number, isEditor: boolean) {
+            const updatedUser = await updateNoteUserRoleRequest(token, noteId, userId, isEditor);
+            if (this.selectedNote?.id === noteId) {
+                const index = this.noteUsers.findIndex(
+                    user => user.user_id === userId
+                );
+                if (index !== -1) {
+                    this.noteUsers[index] = updatedUser;
+                }
+            }
+        },
+
+        async removeNoteUser(token: string, noteId: number, userId: number) {
+            await removeNoteUserRequest(token, noteId, userId);
+            if (this.selectedNote?.id === noteId) {
+                this.noteUsers = this.noteUsers.filter(
+                    user => user.user_id !== userId
+                );
+            }
         },
     }
 });

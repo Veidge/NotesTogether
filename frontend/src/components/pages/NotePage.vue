@@ -14,6 +14,7 @@ import {useRouter} from "vue-router";
 import ColorPicker from "../ui/ColorPicker.vue";
 import CreateNoteModal from "../ui/CreateNoteModal.vue";
 import ManageTagsModal from "../ui/ManageTagsModal.vue";
+import SharingPanel from "../ui/SharingPanel.vue";
 
 
 const router = useRouter();
@@ -166,6 +167,11 @@ onMounted(async () => {
         return;
     }
     try {
+        await authStore.fetchCurrentUser();
+        if (!authStore.token) {
+            await router.replace({ name: "login" });
+            return;
+        }
         await Promise.all([
             notesStore.fetchNotes(authStore.token),
             notesStore.fetchTags(authStore.token)
@@ -453,17 +459,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="h-[92vh] w-full p-4 flex flex-col">
+    <div class="h-[92vh] w-full p-4 flex flex-col min-h-0">
         <HeaderMain v-model="searchQuery"/>
         <div class="flex flex-col flex-1 py-2 rounded-xl border border-text shadow-sm">
-            <div class="p-6 flex flex-1 justify-between">
-                <div class="w-75 min-h-0 flex flex-col gap-3">
+            <div class="px-4 py-6 flex flex-1 gap-3 min-h-0 overflow-hidden">
+                <div class="w-75  min-h-0 overflow-y-auto flex flex-col gap-3">
 
                     <!--Заметки-->
                     <div class="flex-1 min-h-0 flex flex-col rounded-lg border border-text p-2">
                         <div class="flex h-10 shrink-0 items-center justify-between px-1 mb-2">
                             <div class="flex items-center gap-2">
-                                <h2 class="font-sans text-xl">Заметки</h2>
+                                <h2 class="font-heading text-xl">Заметки</h2>
                                 <button class="p-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
                                     title="Создать заметку" @click="isCreateModalOpen = true">
                                     <PlusIcon :size="20" />
@@ -508,7 +514,7 @@ onBeforeUnmount(() => {
                     <!-- Архив -->
                     <div class="h-28 shrink-0 flex flex-col rounded-lg border border-text p-2">
                         <div class="h-10 shrink-0 flex items-center px-1 mb-2">
-                            <h2 class="font-sans text-xl">Архив</h2>
+                            <h2 class="font-heading text-xl">Архив</h2>
                         </div>
 
                         <div v-if="sortedArchivedNotes.length === 0"
@@ -531,7 +537,7 @@ onBeforeUnmount(() => {
                     <!-- Корзина -->
                     <div class="h-28 shrink-0 flex flex-col rounded-lg border border-text p-2">
                         <div class="h-10 shrink-0 flex items-center px-1 mb-2">
-                            <h2 class="font-sans text-xl">Корзина</h2>
+                            <h2 class="font-heading text-xl">Корзина</h2>
                         </div>
                         
                         <div v-if="sortedTrashedNotes.length === 0"
@@ -550,9 +556,9 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
                     </div>
-
                 </div>
-                <div class="flex flex-1 flex-col gap-2 mx-5">
+
+                <div class="flex flex-1 min-w-0 min-h-0 overflow-y-auto flex-col gap-2">
                     <div class="w-full min-h-10 rounded-lg border border-text px-2 py-1 mb-4 flex items-center gap-3">
                         <button v-if="activeSection !== 'trash'" class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
                             :style="{ backgroundColor: selectedNote?.color }" title="Изменить цвет заметки"
@@ -684,6 +690,9 @@ onBeforeUnmount(() => {
                                   placeholder="Начните писать..."/>
                     </div>
                 </div>
+
+                <SharingPanel v-if="selectedNote && activeSection !== 'trash'" :note-id="selectedNote.id"
+                              :is-owner="selectedNote.is_owner"/>
             </div>
         </div>
         <CreateNoteModal

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 
+const searchQuery = defineModel<string>({ default: "" });
+
 </script>
 
 <template>
@@ -8,7 +10,7 @@
             <h1 class="font-logo text-3xl px-4 p-2">Notes Together</h1>
         </div>
         <div class="flex-1 mx-5">
-            <input type="text" placeholder="Поиск заметок"
+            <input v-model="searchQuery" type="text" placeholder="Поиск заметок"
                    class="w-full rounded-lg border border-color-accent bg-surface px-3 py-1"/>
         </div>
         <div class="gap-2 content-center mx-2 p-2">

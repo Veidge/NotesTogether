@@ -16,6 +16,10 @@ export interface ApiError extends Error {
     status: number;
 }
 
+export interface NoteSearchParams {
+    search: string;
+}
+
 export async function getUser(token: string): Promise<ApiUser> {
     const response = await fetch(`${API_URL}/auth/me`, {
         method: 'GET',
@@ -64,8 +68,12 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 
-export async function getNotes(token: string): Promise<Note[]> {
-    const response = await fetch(`${API_URL}/notes`, {
+export async function getNotes(token: string, params?: NoteSearchParams): Promise<Note[]> {
+    const query = new URLSearchParams();
+    if (params?.search) {
+        query.set("search", params.search);
+    }
+    const response = await fetch(`${API_URL}/notes?${query.toString()}`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`,
@@ -112,8 +120,12 @@ export async function deleteNote(token: string, noteId: number): Promise<void> {
     return handleResponse<void>(response);
 }
 
-export async function getArchivedNotes(token: string): Promise<Note[]> {
-    const response = await fetch(`${API_URL}/notes/archive`, {
+export async function getArchivedNotes(token: string, params?: NoteSearchParams): Promise<Note[]> {
+    const query = new URLSearchParams();
+    if (params?.search) {
+        query.set("search", params.search);
+    }
+    const response = await fetch(`${API_URL}/notes/archive?${query.toString()}`, {
         method: "GET",
         headers: {
             Authorization: `Bearer ${token}`

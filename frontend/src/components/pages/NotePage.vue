@@ -41,6 +41,29 @@ const isUpdatingTag = ref(false);
 const tagError = ref("");
 const isManageTagsModalOpen = ref(false);
 
+const searchQuery = ref("");
+
+let searchTimeout: ReturnType<typeof setTimeout> | undefined;
+watch(searchQuery, (value) => {
+    if (!authStore.token) return;
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    searchTimeout = setTimeout(async () => {
+        try {
+            const search = value.trim();
+            if (search) {
+                await notesStore.fetchNotes(authStore.token!, { search });
+            }
+            else {
+                await notesStore.fetchNotes(authStore.token!);
+            }
+        }
+        catch (error) {
+            console.error("Ошибка поиска заметок:", error);
+        }
+    }, 350);
+});
 
 const tagDropdown = ref<HTMLElement | null>(null);
 
@@ -51,7 +74,12 @@ function handleOutsideClick(event: MouseEvent) {
 }
 
 onMounted(() => {document.addEventListener("click", handleOutsideClick);});
-onBeforeUnmount(() => {document.removeEventListener("click", handleOutsideClick);});
+onBeforeUnmount(() => {
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    document.removeEventListener("click", handleOutsideClick);
+});
 
 
 const availableTags = computed(() =>
@@ -426,7 +454,7 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="h-[92vh] w-full p-4 flex flex-col">
-        <HeaderMain/>
+        <HeaderMain v-model="searchQuery"/>
         <div class="flex flex-col flex-1 py-2 rounded-xl border border-text shadow-sm">
             <div class="p-6 flex flex-1 justify-between">
                 <div class="w-75 min-h-0 flex flex-col gap-3">

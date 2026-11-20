@@ -5,6 +5,7 @@ import {getNotes, createNote as createNoteRequest, updateNote as updateNoteReque
     permanentlyDeleteNote as permanentlyDeleteNoteRequest, getTags, getNoteTags,
     createTag as createTagRequest, updateTag as updateTagRequest, deleteTag as deleteTagRequest,
     addTagToNote as addTagToNoteRequest, removeTagFromNote as removeTagFromNoteRequest,
+    type NoteSearchParams
 } from "../services/api.ts";
 
 export interface Note {
@@ -40,24 +41,52 @@ export const useNotesStore = defineStore("notes", {
     }),
 
     actions: {
-        async fetchNotes(token: string) {
-            const [notes, archivedNotes, trashedNotes] = await Promise.all([
-                getNotes(token),
-                getArchivedNotes(token),
-                getTrashedNotes(token)
-            ]);
-            this.listNotes = notes;
-            this.archivedNotes = archivedNotes;
-            this.trashedNotes = trashedNotes;
+        async fetchNotes(token: string, params?: NoteSearchParams) {
+            if (params) {
+                const [notes, archivedNotes] = await Promise.all([
+                    getNotes(token, params),
+                    getArchivedNotes(token, params)
+                ]);
 
-            this.selectedNote = notes[0] ?? archivedNotes[0] ?? trashedNotes[0] ?? null;
+                this.listNotes = notes;
+                this.archivedNotes = archivedNotes;
 
-            if (this.selectedNote) {
-                this.activeSection = notes.length > 0 ? "notes" : archivedNotes.length > 0 ? "archive" : "trash";
+                const currentNote = [...notes, ...archivedNotes].find(
+                    note => note.id === this.selectedNote?.id);
+                if (currentNote) {
+                    this.selectedNote = currentNote;
+                }
+                else if (this.activeSection === "archive") {
+                    this.selectedNote = archivedNotes[0] ?? null;
+                }
+                else {
+                    this.selectedNote = notes[0] ?? null;
+                }
             }
+
             else {
-                this.activeSection = "notes";
+                const [notes, archivedNotes, trashedNotes] = await Promise.all([
+                    getNotes(token),
+                    getArchivedNotes(token),
+                    getTrashedNotes(token)
+                ]);
+
+                this.listNotes = notes;
+                this.archivedNotes = archivedNotes;
+                this.trashedNotes = trashedNotes;
+
+                this.selectedNote = notes[0] ?? archivedNotes[0] ?? trashedNotes[0] ?? null;
+                if (notes.length > 0) {
+                    this.activeSection = "notes";
+                }
+                else if (archivedNotes.length > 0) {
+                    this.activeSection = "archive";
+                }
+                else {
+                    this.activeSection = "trash";
+                }
             }
+            this.noteTags = [];
         },
 
         async createNote(token: string, noteData: NoteData) {

@@ -2,7 +2,10 @@ import {defineStore} from "pinia";
 import {getNotes, createNote as createNoteRequest, updateNote as updateNoteRequest,
     deleteNote as deleteNoteRequest,  getArchivedNotes, getTrashedNotes,
     archiveNote as archiveNoteRequest, restoreNote as restoreNoteRequest,
-    permanentlyDeleteNote as permanentlyDeleteNoteRequest} from "../services/api.ts";
+    permanentlyDeleteNote as permanentlyDeleteNoteRequest, getTags, getNoteTags,
+    createTag as createTagRequest, updateTag as updateTagRequest, deleteTag as deleteTagRequest,
+    addTagToNote as addTagToNoteRequest, removeTagFromNote as removeTagFromNoteRequest,
+} from "../services/api.ts";
 
 export interface Note {
     id: number;
@@ -13,6 +16,12 @@ export interface Note {
     is_archived: boolean;
     created_at: string;
     updated_at: string;
+}
+
+export interface Tag {
+    id: number;
+    name: string;
+    default_tag: boolean;
 }
 
 type NoteData = Pick<Note, "title" | "content" | "color">;
@@ -26,6 +35,8 @@ export const useNotesStore = defineStore("notes", {
         trashedNotes: [] as Note[],
         selectedNote: null as Note | null,
         activeSection: "notes" as NoteSection,
+        tags: [] as Tag[],
+        noteTags: [] as Tag[],
     }),
 
     actions: {
@@ -128,6 +139,53 @@ export const useNotesStore = defineStore("notes", {
         selectNote(note: Note | null, section: NoteSection) {
             this.selectedNote = note;
             this.activeSection = section;
-        }
+        },
+
+        async fetchTags(token: string) {
+            this.tags = await getTags(token);
+        },
+
+        async fetchNoteTags(token: string, noteId: number) {
+            const tags = await getNoteTags(token, noteId);
+            if (this.selectedNote?.id === noteId && this.activeSection !== "trash") {
+                this.noteTags = tags;
+            }
+        },
+
+        async createTag(token: string, name: string) {
+            const newTag = await createTagRequest(token, name);
+            this.tags.push(newTag);
+            return newTag;
+        },
+
+        async updateTag(token: string, tagId: number, name: string) {
+            const updatedTag = await updateTagRequest(token, tagId, name);
+            const index = this.tags.findIndex(tag => tag.id === tagId);
+            if (index !== -1) {
+                this.tags[index] = updatedTag;
+            }
+            this.noteTags = this.noteTags.map(tag =>
+                tag.id === tagId ? updatedTag : tag
+            );
+        },
+
+        async deleteTag(token: string, tagId: number) {
+            await deleteTagRequest(token, tagId);
+            this.tags = this.tags.filter(tag => tag.id !== tagId);
+            this.noteTags = this.noteTags.filter(tag => tag.id !== tagId);
+        },
+
+        async addTagToNote(token: string, noteId: number, tagId: number) {
+            await addTagToNoteRequest(token, noteId, tagId);
+            const tag = this.tags.find(tag => tag.id === tagId);
+            if (tag && !this.noteTags.some(noteTag => noteTag.id === tagId)) {
+                this.noteTags.push(tag);
+            }
+        },
+
+        async removeTagFromNote(token: string, noteId: number, tagId: number) {
+            await removeTagFromNoteRequest(token, noteId, tagId);
+            this.noteTags = this.noteTags.filter(tag => tag.id !== tagId);
+        },
     }
 });

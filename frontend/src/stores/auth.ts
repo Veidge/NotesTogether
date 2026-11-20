@@ -1,5 +1,6 @@
 import {defineStore} from "pinia";
 import { getUser, login, register, type ApiError } from "../services/api.ts";
+import { useNotesStore } from "./notes.ts";
 
 export interface UserRegister {
     displayName: string;
@@ -34,6 +35,8 @@ export const useAuthStore = defineStore("auth", {
             this.user = null;
             this.token = null;
             localStorage.removeItem("token");
+            const notesStore = useNotesStore();
+            notesStore.$reset();
         },
         async login(authData: UserLogin) {
             const tokenResponse  = await login(authData.username, authData.password);

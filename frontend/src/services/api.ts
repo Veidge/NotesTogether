@@ -1,4 +1,4 @@
-import type {Note} from "../stores/notes.ts";
+import type {Note, Tag} from "../stores/notes.ts";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -156,6 +156,81 @@ export async function restoreNote(token: string, noteId: number): Promise<Note> 
 
 export async function permanentlyDeleteNote(token: string, noteId: number): Promise<void> {
     const response = await fetch(`${API_URL}/notes/${noteId}/permanent`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    return handleResponse<void>(response);
+}
+
+export async function getTags(token: string): Promise<Tag[]> {
+    const response = await fetch(`${API_URL}/tags`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        }
+    });
+    return handleResponse<Tag[]>(response);
+}
+
+export async function createTag(token: string, name: string): Promise<Tag> {
+    const response = await fetch(`${API_URL}/tags`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+    });
+
+    return handleResponse<Tag>(response);
+}
+
+export async function updateTag(token: string, tagId: number, name: string): Promise<Tag> {
+    const response = await fetch(`${API_URL}/tags/${tagId}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name }),
+    });
+    return handleResponse<Tag>(response);
+}
+
+export async function deleteTag(token: string, tagId: number): Promise<void> {
+    const response = await fetch(`${API_URL}/tags/${tagId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    return handleResponse<void>(response);
+}
+
+export async function getNoteTags(token: string, noteId: number): Promise<Tag[]> {
+    const response = await fetch(`${API_URL}/notes/${noteId}/tags`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    return handleResponse<Tag[]>(response);
+}
+
+export async function addTagToNote(token: string, noteId: number, tagId: number): Promise<void> {
+    const response = await fetch(`${API_URL}/notes/${noteId}/tags/${tagId}`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    return handleResponse<void>(response);
+}
+
+export async function removeTagFromNote(token: string, noteId: number, tagId: number): Promise<void> {
+    const response = await fetch(`${API_URL}/notes/${noteId}/tags/${tagId}`, {
         method: "DELETE",
         headers: {
             Authorization: `Bearer ${token}`

@@ -19,7 +19,7 @@ const router = useRouter();
 const notesStore = useNotesStore();
 const authStore = useAuthStore();
 
-const { listNotes, archivedNotes, trashedNotes, selectedNote, activeSection } = storeToRefs(notesStore);
+const { listNotes, archivedNotes, trashedNotes, selectedNote, activeSection, noteTags } = storeToRefs(notesStore);
 const sortBy = ref<"title" | "updated_at">("updated_at");
 const sortDirection = ref<"asc" | "desc">("desc");
 
@@ -34,6 +34,16 @@ const createError = ref("");
 
 const isDeleting = ref(false);
 const deleteError = ref("");
+
+const isTagListOpen = ref(false);
+const isUpdatingTag = ref(false);
+const tagError = ref("");
+
+const availableTags = computed(() =>
+    notesStore.tags.filter(
+        tag => !noteTags.value.some(noteTag => noteTag.id === tag.id)
+    )
+);
 
 function openColorPicker() {
     if (!selectedNote.value) return;
@@ -75,6 +85,23 @@ watch(selectedNote, (note) => {
     isColorPickerOpen.value = false;
 });
 
+watch(
+    [selectedNote, activeSection],
+    async ([note, section]) => {
+        notesStore.noteTags = [];
+        if (!note || section === "trash" || !authStore.token) {
+            return;
+        }
+
+        try {
+            await notesStore.fetchNoteTags(authStore.token, note.id);
+        } catch (error) {
+            console.error("Не удалось загрузить теги заметки: ", error);
+        }
+    },
+    { immediate: true }
+);
+
 const editTitle = ref("");
 const editContent = ref("");
 
@@ -96,7 +123,10 @@ onMounted(async () => {
         return;
     }
     try {
-        await notesStore.fetchNotes(authStore.token);
+        await Promise.all([
+            notesStore.fetchNotes(authStore.token),
+            notesStore.fetchTags(authStore.token)
+        ]);
     }
     catch (error) {
         if (error instanceof Error && "status" in error && error.status === 401) {
@@ -104,7 +134,7 @@ onMounted(async () => {
             await router.replace({ name: "login" });
             return;
         }
-        console.error("Не удалось загрузить заметки: ", error);
+        console.error("Не удалось загрузить данные: ", error);
     }
 });
 
@@ -325,6 +355,36 @@ async function handlePermanentlyDeleteNote() {
     }
 }
 
+async function handleAddTag(tagId: number) {
+    if (!authStore.token || !selectedNote.value || isUpdatingTag.value) return;
+    isUpdatingTag.value = true;
+    tagError.value = "";
+
+    try {
+        await notesStore.addTagToNote(authStore.token, selectedNote.value.id, tagId);
+    } catch (error) {
+        console.error("Не удалось прикрепить тег:", error);
+        tagError.value = "Не удалось прикрепить тег.";
+    } finally {
+        isUpdatingTag.value = false;
+    }
+}
+
+async function handleRemoveTag(tagId: number) {
+    if (!authStore.token || !selectedNote.value || isUpdatingTag.value) return;
+    isUpdatingTag.value = true;
+    tagError.value = "";
+
+    try {
+        await notesStore.removeTagFromNote(authStore.token, selectedNote.value.id, tagId);
+    } catch (error) {
+        console.error("Не удалось открепить тег:", error);
+        tagError.value = "Не удалось открепить тег.";
+    } finally {
+        isUpdatingTag.value = false;
+    }
+}
+
 watch(
     selectedNote,
     (note) => {
@@ -534,7 +594,41 @@ onBeforeUnmount(() => {
                             <p v-if="colorSaveError" class="text-sm text-red-700">{{ colorSaveError }}</p>
                         </div>
                     </div>
-                    <div class="flex-1 rounded-sm border border-black-200 p-4">
+                    <div v-if="selectedNote && activeSection !== 'trash'" class="min-h-10 flex items-center gap-3 px-1 mb-2">
+                        <span class="text-sm text-text/60 shrink-0">Теги:</span>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span v-for="tag in noteTags" :key="tag.id"
+                                class="rounded-full bg-accent/20 px-3 py-1 text-xs text-text flex items-center gap-1">
+                                {{ tag.name }}
+                                <button class="rounded-full p-0.5 hover:bg-accent/40 transition-colors cursor-pointer disabled:opacity-40"
+                                    title="Открепить тег" :disabled="isUpdatingTag"
+                                    @click="handleRemoveTag(tag.id)">
+                                    <XIcon :size="12" />
+                                </button>
+                            </span>
+
+                            <div class="relative">
+                                <button class="w-7 h-7 flex items-center justify-center rounded-full border border-text/30 hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
+                                    title="Добавить тег" :disabled="isUpdatingTag"
+                                    @click="isTagListOpen = !isTagListOpen">
+                                    <PlusIcon :size="16" />
+                                </button>
+                                <div v-if="isTagListOpen"
+                                    class="absolute left-0 top-full z-30 mt-2 w-52 max-h-60 overflow-y-auto rounded-lg border border-text/30 bg-surface shadow-md p-2">
+                                    <p class="text-xs text-text/50 px-2 py-1">Доступные теги</p>
+                                    <button v-for="tag in availableTags" :key="tag.id"
+                                        class="w-full text-left px-2 py-2 rounded-md text-sm hover:bg-accent/25 transition-colors cursor-pointer disabled:opacity-40"
+                                        :disabled="isUpdatingTag" @click="handleAddTag(tag.id)">
+                                        {{ tag.name }}
+                                    </button>
+                                    <p v-if="availableTags.length === 0" class="px-2 py-2 text-xs text-text/50">
+                                        Все теги уже добавлены
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="min-h-0 flex-1 rounded-sm border border-black-200 p-4">
                         <textarea v-model="editContent"
                                   :disabled="!selectedNote || isDeleting || activeSection === 'trash'"
                                   class="w-full h-full resize-none outline-none bg-transparent font-sans"

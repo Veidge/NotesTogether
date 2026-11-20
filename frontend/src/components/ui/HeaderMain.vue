@@ -1,7 +1,16 @@
 <script setup lang="ts">
+import { useRouter } from "vue-router";
+import { LogOut } from "@lucide/vue";
+import { useAuthStore } from "../../stores/auth";
 
 const searchQuery = defineModel<string>({ default: "" });
+const authStore = useAuthStore();
+const router = useRouter();
 
+function logout() {
+    authStore.logout();
+    router.replace({ name: "login" });
+}
 </script>
 
 <template>
@@ -13,8 +22,17 @@ const searchQuery = defineModel<string>({ default: "" });
             <input v-model="searchQuery" type="text" placeholder="Поиск заметок"
                    class="w-full rounded-lg border border-color-accent bg-surface px-3 py-1"/>
         </div>
-        <div class="gap-2 content-center md:mx-2 md:p-2 p-1">
-            <RouterLink to="/login">Профиль</RouterLink>
+        <div v-if="authStore.user" class="flex items-center gap-2 md:mx-2 md:p-2 p-1">
+            <div class="flex min-w-0 flex-col items-end">
+                <span class="max-w-24 sm:max-w-40 truncate font-medium font-logo">{{ authStore.user.displayName }}</span>
+                <span class="max-w-24 sm:max-w-40 truncate text-xs text-text/50">@{{ authStore.user.username }}</span>
+            </div>
+
+            <button type="button" title="Выйти" aria-label="Выйти"
+                    class="shrink-0 rounded-lg p-2 text-text/70 transition hover:bg-accent/20 hover:text-text cursor-pointer"
+                    @click="logout">
+                <LogOut :size="18"/>
+            </button>
         </div>
     </div>
 </template>

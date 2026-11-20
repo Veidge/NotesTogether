@@ -13,6 +13,7 @@ import { useAuthStore } from "../../stores/auth";
 import {useRouter} from "vue-router";
 import ColorPicker from "../ui/ColorPicker.vue";
 import CreateNoteModal from "../ui/CreateNoteModal.vue";
+import ManageTagsModal from "../ui/ManageTagsModal.vue";
 
 
 const router = useRouter();
@@ -38,6 +39,20 @@ const deleteError = ref("");
 const isTagListOpen = ref(false);
 const isUpdatingTag = ref(false);
 const tagError = ref("");
+const isManageTagsModalOpen = ref(false);
+
+
+const tagDropdown = ref<HTMLElement | null>(null);
+
+function handleOutsideClick(event: MouseEvent) {
+    if (!tagDropdown.value?.contains(event.target as Node)) {
+        isTagListOpen.value = false;
+    }
+}
+
+onMounted(() => {document.addEventListener("click", handleOutsideClick);});
+onBeforeUnmount(() => {document.removeEventListener("click", handleOutsideClick);});
+
 
 const availableTags = computed(() =>
     notesStore.tags.filter(
@@ -575,19 +590,15 @@ onBeforeUnmount(() => {
                              class="absolute left-0 top-full z-20 mt-2 p-3 rounded-lg border border-text/40 bg-surface shadow-md flex flex-col gap-3 w-fit">
                             <ColorPicker v-model="draftColor" />
                             <div class="flex gap-2">
-                                <button
-                                    class="px-3 py-1 rounded-md bg-accent/60 hover:bg-accent transition-colors cursor-pointer"
+                                <button class="px-3 py-1 rounded-md bg-accent/60 hover:bg-accent transition-colors cursor-pointer"
                                     :disabled="isSavingColor"
-                                    @click="saveNoteColor"
-                                >
+                                    @click="saveNoteColor">
                                     {{ isSavingColor ? "Сохранение..." : "Применить" }}
                                 </button>
 
-                                <button
-                                    class="px-3 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                <button class="px-3 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
                                     :disabled="isSavingColor"
-                                    @click="cancelColorChange"
-                                >
+                                    @click="cancelColorChange">
                                     Отмена
                                 </button>
                             </div>
@@ -595,10 +606,13 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                     <div v-if="selectedNote && activeSection !== 'trash'" class="min-h-10 flex items-center gap-3 px-1 mb-2">
-                        <span class="text-sm text-text/60 shrink-0">Теги:</span>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <span class="text-sm text-text/60">Теги:</span>
+                        </div>
+
                         <div class="flex flex-wrap items-center gap-2">
                             <span v-for="tag in noteTags" :key="tag.id"
-                                class="rounded-full bg-accent/20 px-3 py-1 text-xs text-text flex items-center gap-1">
+                                  class="rounded-full bg-accent/20 px-3 py-1 text-xs text-text flex items-center gap-1">
                                 {{ tag.name }}
                                 <button class="rounded-full p-0.5 hover:bg-accent/40 transition-colors cursor-pointer disabled:opacity-40"
                                     title="Открепить тег" :disabled="isUpdatingTag"
@@ -607,26 +621,33 @@ onBeforeUnmount(() => {
                                 </button>
                             </span>
 
-                            <div class="relative">
-                                <button class="w-7 h-7 flex items-center justify-center rounded-full border border-text/30 hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
-                                    title="Добавить тег" :disabled="isUpdatingTag"
-                                    @click="isTagListOpen = !isTagListOpen">
+                            <div class="relative" ref="tagDropdown">
+                                <button
+                                    class="w-7 h-7 flex items-center justify-center rounded-full border border-text/30 hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
+                                    title="Добавить тег"
+                                    :disabled="isUpdatingTag"
+                                    @click.stop="isTagListOpen = !isTagListOpen">
                                     <PlusIcon :size="16" />
                                 </button>
+
                                 <div v-if="isTagListOpen"
-                                    class="absolute left-0 top-full z-30 mt-2 w-52 max-h-60 overflow-y-auto rounded-lg border border-text/30 bg-surface shadow-md p-2">
+                                     class="absolute left-0 top-full z-30 mt-2 w-52 max-h-60 overflow-y-auto rounded-lg border border-text/30 bg-surface shadow-md p-2">
                                     <p class="text-xs text-text/50 px-2 py-1">Доступные теги</p>
                                     <button v-for="tag in availableTags" :key="tag.id"
                                         class="w-full text-left px-2 py-2 rounded-md text-sm hover:bg-accent/25 transition-colors cursor-pointer disabled:opacity-40"
-                                        :disabled="isUpdatingTag" @click="handleAddTag(tag.id)">
+                                        :disabled="isUpdatingTag"
+                                        @click="handleAddTag(tag.id)">
                                         {{ tag.name }}
                                     </button>
-                                    <p v-if="availableTags.length === 0" class="px-2 py-2 text-xs text-text/50">
-                                        Все теги уже добавлены
-                                    </p>
+
+                                    <p v-if="availableTags.length === 0" class="px-2 py-2 text-xs text-text/50">Все теги уже добавлены</p>
                                 </div>
                             </div>
                         </div>
+                        <button class="ml-auto shrink-0 text-text/60 hover:text-text transition-colors cursor-pointer"
+                            @click="isManageTagsModalOpen = true">
+                            Управление
+                        </button>
                     </div>
                     <div class="min-h-0 flex-1 rounded-sm border border-black-200 p-4">
                         <textarea v-model="editContent"
@@ -642,6 +663,9 @@ onBeforeUnmount(() => {
             :loading="isCreating"
             :error="createError"
             @create="handleCreateNote"
+        />
+        <ManageTagsModal
+            v-model="isManageTagsModalOpen"
         />
     </div>
 </template>

@@ -468,7 +468,7 @@ onBeforeUnmount(() => {
                     <!--Заметки-->
                     <div class="h-64 shrink-0 sm:flex-1 sm:h-auto sm:shrink min-h-0 flex flex-col rounded-lg border border-text p-2">                        <div class="flex h-10 shrink-0 items-center justify-between px-1 mb-2">
                             <div class="flex items-center gap-2">
-                                <h2 class="font-heading text-xl">Заметки</h2>
+                                <h2 class="font-heading md:text-xl text-lg">Заметки</h2>
                                 <button class="p-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
                                     title="Создать заметку" @click="isCreateModalOpen = true">
                                     <PlusIcon :size="20" />
@@ -513,7 +513,7 @@ onBeforeUnmount(() => {
                     <!-- Архив -->
                     <div class="h-28 shrink-0 flex flex-col rounded-lg border border-text p-2">
                         <div class="h-10 shrink-0 flex items-center px-1 mb-2">
-                            <h2 class="font-heading text-xl">Архив</h2>
+                            <h2 class="font-heading md:text-xl text-lg">Архив</h2>
                         </div>
 
                         <div v-if="sortedArchivedNotes.length === 0"
@@ -536,7 +536,7 @@ onBeforeUnmount(() => {
                     <!-- Корзина -->
                     <div class="h-28 shrink-0 flex flex-col rounded-lg border border-text p-2">
                         <div class="h-10 shrink-0 flex items-center px-1 mb-2">
-                            <h2 class="font-heading text-xl">Корзина</h2>
+                            <h2 class="font-heading md:text-xl text-lg">Корзина</h2>
                         </div>
                         
                         <div v-if="sortedTrashedNotes.length === 0"
@@ -559,8 +559,11 @@ onBeforeUnmount(() => {
 
                 <div class="flex flex-col min-[1000px]:flex-row flex-1 min-w-0 min-h-0 gap-3">
 
-                    <div class="w-full min-[1000px]:flex-1 min-w-0 min-h-[55vh] min-[1000px]:min-h-0 overflow-y-auto flex flex-col gap-2">
-                        <div class="w-full min-h-10 rounded-lg border border-text px-2 py-1 mb-4 flex items-center gap-3">
+                    <div class="w-full min-[1000px]:flex-1 min-w-0 min-h-[55vh] min-[1000px]:min-h-0 overflow-y-auto flex flex-col gap-2 border-t-2 border-accent/70 pt-3 mt-2 sm:border-0 sm:pt-0 sm:mt-0">
+                        <p v-if="selectedNote" class="sm:hidden px-1 text-xs font-medium uppercase tracking-wider text-text/55">
+                            Выбранная заметка
+                        </p>
+                        <div class="w-full min-h-10 rounded-lg border border-text px-2 py-1 flex items-center gap-3">
                             <button v-if="activeSection !== 'trash'" class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
                                 :style="{ backgroundColor: selectedNote?.color }" title="Изменить цвет заметки"
                                 @click="openColorPicker"/>

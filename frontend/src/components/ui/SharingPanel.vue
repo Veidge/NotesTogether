@@ -132,65 +132,65 @@ watch(
 </script>
 
 <template>
-    <aside class="w-60 shrink-0 min-h-0 overflow-y-auto flex flex-col gap-4 border-l border-text/15 px-4">
-        <div class="flex flex-col gap-1">
-            <h2 class="font-heading text-xl">Участники заметки</h2>
+    <aside class="w-full max-w-xl mx-auto min-w-0 min-[1000px]:mx-0 min-[1000px]:w-60 min-[1000px]:shrink-0 min-h-0 overflow-y-auto flex flex-col gap-4 border-t border-text/15 px-3 sm:px-4 min-[1000px]:border-t-0 min-[1000px]:border-l">
+        <div class="flex flex-col gap-1 items-center">
+            <h2 class="font-heading text-lg sm:text-xl">Участники заметки</h2>
         </div>
 
-        <form v-if="isOwner" class="flex flex-col gap-2" @submit.prevent="inviteUser">
-            <label class="text-sm font-medium text-text">Пригласить пользователя</label>
+        <div class="grid grid-cols-1 min-[640px]:grid-cols-2 min-[1000px]:grid-cols-1 gap-4">
+            <form v-if="isOwner" class="flex flex-col gap-2" @submit.prevent="inviteUser">
+                <label class="text-sm font-medium text-text">Пригласить пользователя</label>
 
-            <input v-model="username" type="text" minlength="3" maxlength="25" placeholder="Имя пользователя"
-                class="w-full rounded-lg border border-text/20 bg-surface p-2 text-sm outline-none focus:border-accent"
-                required/>
+                <input v-model="username" type="text" minlength="3" maxlength="25" placeholder="Имя пользователя"
+                    class="w-full rounded-lg border border-text/20 bg-surface p-2 text-sm outline-none focus:border-accent"
+                    required/>
 
-            <select v-model="inviteRole"
-                class="w-full rounded-lg border border-text/20 bg-surface p-2 text-sm outline-none focus:border-accent">
-                <option value="editor">Редактор</option>
-                <option value="viewer">Без права редактирования</option>
-            </select>
+                <select v-model="inviteRole"
+                    class="w-full rounded-lg border border-text/20 bg-surface p-2 text-sm outline-none focus:border-accent">
+                    <option value="editor">Редактор</option>
+                    <option value="viewer">Без права редактирования</option>
+                </select>
 
-            <button type="submit" :disabled="isInviting || !username.trim()"
-                class="rounded-lg bg-accent px-3 py-2 text-sm text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-                {{ isInviting ? "Приглашение..." : "Добавить участника" }}
-            </button>
-        </form>
-        <div class="h-px bg-text/15" />
+                <button type="submit" :disabled="isInviting || !username.trim()"
+                    class="rounded-lg bg-accent px-3 py-2 text-sm text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+                    {{ isInviting ? "Приглашение..." : "Добавить участника" }}
+                </button>
+            </form>
 
-        <div class="flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-medium text-text">Участники</h3>
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-medium text-text">Участники</h3>
 
-                <span class="text-xs text-text/50">{{ noteUsers.length }}</span>
-            </div>
-
-            <p v-if="isLoading" class="text-sm text-text/50">Загрузка участников...</p>
-            <p v-else-if="noteUsers.length === 0" class="text-sm text-text/50">Список участников пуст.</p>
-            <div v-for="user in noteUsers" :key="user.user_id" class="flex flex-col gap-2 rounded-lg bg-surface p-3">
-                <div class="flex min-w-0 flex-col gap-0.5">
-                    <span class="truncate text-sm font-medium text-text">{{ user.display_name }}</span>
-                    <span class="truncate text-xs text-text/50">@{{ user.username }}</span>
-                    <span class="mt-1 text-xs text-text/70">{{ getUserRole(user) }}
-                        <template v-if="user.username === currentUsername">- Вы</template>
-                    </span>
+                    <span class="text-xs text-text/50">{{ noteUsers.length }}</span>
                 </div>
 
-                <template v-if="isOwner && user.username !== currentUsername">
-                    <select :value="user.is_editor ? 'editor' : 'viewer'"
-                        class="w-full rounded-md border border-text/15 bg-background px-2 py-1.5 text-xs text-text outline-none focus:border-accent"
-                        @change="changeRole(user, $event)">
-                        <option value="editor">Редактор</option>
-                        <option value="viewer">Без права редактирования</option>
-                    </select>
+                <p v-if="isLoading" class="text-sm text-text/50">Загрузка участников...</p>
+                <p v-else-if="noteUsers.length === 0" class="text-sm text-text/50">Список участников пуст.</p>
+                <div v-for="user in noteUsers" :key="user.user_id" class="min-w-0 flex flex-col gap-2 rounded-lg bg-surface p-3">
+                    <div class="flex min-w-0 flex-col gap-0.5">
+                        <span class="truncate text-sm font-medium text-text">{{ user.display_name }}</span>
+                        <span class="truncate text-xs text-text/50">@{{ user.username }}</span>
+                        <span class="mt-1 text-xs text-text/70">{{ getUserRole(user) }}
+                            <template v-if="user.username === currentUsername">- Вы</template>
+                        </span>
+                    </div>
 
-                    <button type="button" class="self-start text-xs text-red-700 transition hover:text-red-900"
-                        @click="revokeAccess(user)">
-                        Отозвать доступ
-                    </button>
-                </template>
+                    <template v-if="isOwner && user.username !== currentUsername">
+                        <select :value="user.is_editor ? 'editor' : 'viewer'"
+                            class="w-full rounded-md border border-text/15 bg-background px-2 py-1.5 text-xs text-text outline-none focus:border-accent"
+                            @change="changeRole(user, $event)">
+                            <option value="editor">Редактор</option>
+                            <option value="viewer">Без права редактирования</option>
+                        </select>
+
+                        <button type="button" class="self-start text-xs text-red-700 transition hover:text-red-900"
+                            @click="revokeAccess(user)">
+                            Отозвать доступ
+                        </button>
+                    </template>
+                </div>
             </div>
         </div>
-
         <div class="relative min-h-0">
             <div v-if="errorMessage"
                 class="absolute inset-x-0 top-0 rounded-lg bg-red-100 p-2 text-xs text-red-800">{{ errorMessage }}</div>

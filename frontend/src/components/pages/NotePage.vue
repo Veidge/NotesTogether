@@ -459,15 +459,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="h-[92vh] w-full p-4 flex flex-col min-h-0">
+    <div class="min-h-[92dvh] xl:h-[92vh] w-full p-2 sm:p-4 flex flex-col">
         <HeaderMain v-model="searchQuery"/>
-        <div class="flex flex-col flex-1 py-2 rounded-xl border border-text shadow-sm">
-            <div class="px-4 py-6 flex flex-1 gap-3 min-h-0 overflow-hidden">
-                <div class="w-75  min-h-0 overflow-y-auto flex flex-col gap-3">
+        <div class="flex flex-col flex-1 min-h-0 py-2 rounded-xl border border-text shadow-sm">
+            <div class="px-2 sm:px-4 py-3 sm:py-6 flex flex-col sm:flex-row flex-1 gap-3 min-h-0 overflow-y-auto xl:overflow-hidden">
+                <div class="w-full sm:w-64 xl:w-75 sm:shrink-0 min-h-0 sm:h-full sm:overflow-y-auto flex flex-col gap-3">
 
                     <!--Заметки-->
-                    <div class="flex-1 min-h-0 flex flex-col rounded-lg border border-text p-2">
-                        <div class="flex h-10 shrink-0 items-center justify-between px-1 mb-2">
+                    <div class="h-64 shrink-0 sm:flex-1 sm:h-auto sm:shrink min-h-0 flex flex-col rounded-lg border border-text p-2">                        <div class="flex h-10 shrink-0 items-center justify-between px-1 mb-2">
                             <div class="flex items-center gap-2">
                                 <h2 class="font-heading text-xl">Заметки</h2>
                                 <button class="p-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
@@ -558,141 +557,145 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="flex flex-1 min-w-0 min-h-0 overflow-y-auto flex-col gap-2">
-                    <div class="w-full min-h-10 rounded-lg border border-text px-2 py-1 mb-4 flex items-center gap-3">
-                        <button v-if="activeSection !== 'trash'" class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
-                            :style="{ backgroundColor: selectedNote?.color }" title="Изменить цвет заметки"
-                            @click="openColorPicker"/>
+                <div class="flex flex-col min-[1000px]:flex-row flex-1 min-w-0 min-h-0 gap-3">
 
-                        <!-- Заголовок -->
-                        <input v-model="editTitle" class="font-sans text-xl w-full outline-none bg-transparent disabled:opacity-70"
-                            placeholder="Название заметки" maxlength="50" :disabled="!selectedNote || activeSection === 'trash'"/>
+                    <div class="w-full min-[1000px]:flex-1 min-w-0 min-h-[55vh] min-[1000px]:min-h-0 overflow-y-auto flex flex-col gap-2">
+                        <div class="w-full min-h-10 rounded-lg border border-text px-2 py-1 mb-4 flex items-center gap-3">
+                            <button v-if="activeSection !== 'trash'" class="w-6 h-6 rounded-sm border border-text/40 shrink-0 cursor-pointer"
+                                :style="{ backgroundColor: selectedNote?.color }" title="Изменить цвет заметки"
+                                @click="openColorPicker"/>
 
-                        <!-- Действия для обычных заметок -->
-                        <button v-if="activeSection === 'notes'"
-                            class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
-                            title="Переместить в архив" :disabled="!selectedNote || isDeleting || isSavingColor"
-                            @click="handleArchiveNote">
-                            В архив
-                        </button>
+                            <!-- Заголовок -->
+                            <input v-model="editTitle" placeholder="Название заметки" maxlength="50"
+                                   class="font-sans text-base sm:text-xl flex-1 min-w-0 outline-none bg-transparent disabled:opacity-70"
+                                   :disabled="!selectedNote || activeSection === 'trash'"/>
 
-                        <!-- Действия для архива -->
-                        <button v-else-if="activeSection === 'archive'"
-                            class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
-                            title="Вернуть в заметки" :disabled="!selectedNote || isDeleting || isSavingColor"
-                            @click="handleUnarchiveNote">
-                            Вернуть
-                        </button>
-
-                        <!-- Перемещение в корзину -->
-                        <button v-if="activeSection !== 'trash'"
-                            class="shrink-0 p-1 rounded-md hover:bg-red-200/70 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                            title="Переместить в корзину" :disabled="!selectedNote || isDeleting || isSavingColor"
-                            @click="handleDeleteNote">
-                            <XIcon :size="20" />
-                        </button>
-
-                        <!-- Действия для корзины -->
-                        <template v-else>
-                            <button class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
-                                title="Восстановить заметку" :disabled="!selectedNote"
-                                @click="handleRestoreNote">
-                                Восстановить
+                            <!-- Действия для обычных заметок -->
+                            <button v-if="activeSection === 'notes'"
+                                class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
+                                title="Переместить в архив" :disabled="!selectedNote || isDeleting || isSavingColor"
+                                @click="handleArchiveNote">
+                                В архив
                             </button>
-                            <button class="shrink-0 px-2 py-1 rounded-md hover:bg-red-200/70 transition-colors
-                            cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                                    :title="selectedNote?.is_owner ? 'Удалить окончательно' : 'Удалить невозможно, обратитесь к владельцу'"
-                                    :disabled="!selectedNote?.is_owner || isDeleting"
-                                @click="handlePermanentlyDeleteNote">
-                                Удалить
+
+                            <!-- Действия для архива -->
+                            <button v-else-if="activeSection === 'archive'"
+                                class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
+                                title="Вернуть в заметки" :disabled="!selectedNote || isDeleting || isSavingColor"
+                                @click="handleUnarchiveNote">
+                                Вернуть
                             </button>
-                        </template>
-                    </div>
 
-                    <p class="text-xs text-text/60 text-right -mt-3">
-                        <span v-if="saveStatus === 'editing'">Есть несохранённые изменения</span>
-                        <span v-else-if="saveStatus === 'saving'">Сохранение...</span>
-                        <span v-else-if="saveStatus === 'saved'">Сохранено</span>
-                        <span v-else-if="saveStatus === 'error'" class="text-red-700">Ошибка сохранения</span>
-                    </p>
-                    <p v-if="deleteError" class="text-xs text-red-700 text-right -mt-3 mb-1">
-                        {{ deleteError }}
-                    </p>
-                    <div class="relative">
+                            <!-- Перемещение в корзину -->
+                            <button v-if="activeSection !== 'trash'"
+                                class="shrink-0 p-1 rounded-md hover:bg-red-200/70 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                title="Переместить в корзину" :disabled="!selectedNote || isDeleting || isSavingColor"
+                                @click="handleDeleteNote">
+                                <XIcon :size="20" />
+                            </button>
 
-                        <div v-if="isColorPickerOpen && activeSection !== 'trash'"
-                             class="absolute left-0 top-full z-20 mt-2 p-3 rounded-lg border border-text/40 bg-surface shadow-md flex flex-col gap-3 w-fit">
-                            <ColorPicker v-model="draftColor" />
-                            <div class="flex gap-2">
-                                <button class="px-3 py-1 rounded-md bg-accent/60 hover:bg-accent transition-colors cursor-pointer"
-                                    :disabled="isSavingColor"
-                                    @click="saveNoteColor">
-                                    {{ isSavingColor ? "Сохранение..." : "Применить" }}
+                            <!-- Действия для корзины -->
+                            <template v-else>
+                                <button class="shrink-0 px-2 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                    title="Восстановить заметку" :disabled="!selectedNote"
+                                    @click="handleRestoreNote">
+                                    Восстановить
                                 </button>
-
-                                <button class="px-3 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
-                                    :disabled="isSavingColor"
-                                    @click="cancelColorChange">
-                                    Отмена
+                                <button class="shrink-0 px-2 py-1 rounded-md hover:bg-red-200/70 transition-colors
+                                cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                                        :title="selectedNote?.is_owner ? 'Удалить окончательно' : 'Удалить невозможно, обратитесь к владельцу'"
+                                        :disabled="!selectedNote?.is_owner || isDeleting"
+                                    @click="handlePermanentlyDeleteNote">
+                                    Удалить
                                 </button>
-                            </div>
-                            <p v-if="colorSaveError" class="text-sm text-red-700">{{ colorSaveError }}</p>
-                        </div>
-                    </div>
-                    <div v-if="selectedNote && activeSection !== 'trash'" class="min-h-10 flex items-center gap-3 px-1 mb-2">
-                        <div class="flex items-center gap-3 shrink-0">
-                            <span class="text-sm text-text/60">Теги:</span>
+                            </template>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span v-for="tag in noteTags" :key="tag.id"
-                                  class="rounded-full bg-accent/20 px-3 py-1 text-xs text-text flex items-center gap-1">
-                                {{ tag.name }}
-                                <button class="rounded-full p-0.5 hover:bg-accent/40 transition-colors cursor-pointer disabled:opacity-40"
-                                    title="Открепить тег" :disabled="isUpdatingTag"
-                                    @click="handleRemoveTag(tag.id)">
-                                    <XIcon :size="12" />
-                                </button>
-                            </span>
+                        <p class="text-xs text-text/60 text-right -mt-3">
+                            <span v-if="saveStatus === 'editing'">Есть несохранённые изменения</span>
+                            <span v-else-if="saveStatus === 'saving'">Сохранение...</span>
+                            <span v-else-if="saveStatus === 'saved'">Сохранено</span>
+                            <span v-else-if="saveStatus === 'error'" class="text-red-700">Ошибка сохранения</span>
+                        </p>
+                        <p v-if="deleteError" class="text-xs text-red-700 text-right -mt-3 mb-1">
+                            {{ deleteError }}
+                        </p>
+                        <div class="relative">
 
-                            <div class="relative" ref="tagDropdown">
-                                <button
-                                    class="w-6 h-6 flex items-center justify-center rounded-full border border-text/30 hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
-                                    title="Добавить тег"
-                                    :disabled="isUpdatingTag"
-                                    @click.stop="isTagListOpen = !isTagListOpen">
-                                    <PlusIcon :size="16" />
-                                </button>
-
-                                <div v-if="isTagListOpen"
-                                     class="absolute left-0 top-full z-30 mt-2 w-52 max-h-60 overflow-y-auto rounded-lg border border-text/30 bg-surface shadow-md p-2">
-                                    <p class="text-xs text-text/50 px-2 py-1">Доступные теги</p>
-                                    <button v-for="tag in availableTags" :key="tag.id"
-                                        class="w-full text-left px-2 py-2 rounded-md text-sm hover:bg-accent/25 transition-colors cursor-pointer disabled:opacity-40"
-                                        :disabled="isUpdatingTag"
-                                        @click="handleAddTag(tag.id)">
-                                        {{ tag.name }}
+                            <div v-if="isColorPickerOpen && activeSection !== 'trash'"
+                                 class="absolute left-0 top-full z-20 mt-2 p-3 rounded-lg border border-text/40 bg-surface shadow-md flex flex-col gap-3 w-fit">
+                                <ColorPicker v-model="draftColor" />
+                                <div class="flex gap-2">
+                                    <button class="px-3 py-1 rounded-md bg-accent/60 hover:bg-accent transition-colors cursor-pointer"
+                                        :disabled="isSavingColor"
+                                        @click="saveNoteColor">
+                                        {{ isSavingColor ? "Сохранение..." : "Применить" }}
                                     </button>
 
-                                    <p v-if="availableTags.length === 0" class="px-2 py-2 text-xs text-text/50">Все теги уже добавлены</p>
+                                    <button class="px-3 py-1 rounded-md hover:bg-accent/35 transition-colors cursor-pointer"
+                                        :disabled="isSavingColor"
+                                        @click="cancelColorChange">
+                                        Отмена
+                                    </button>
                                 </div>
+                                <p v-if="colorSaveError" class="text-sm text-red-700">{{ colorSaveError }}</p>
                             </div>
                         </div>
-                        <button class="ml-auto shrink-0 text-text/60 hover:text-text transition-colors cursor-pointer"
-                            @click="isManageTagsModalOpen = true">
-                            Управление
-                        </button>
-                    </div>
-                    <div class="min-h-0 flex-1 rounded-sm border border-black-200 p-4">
-                        <textarea v-model="editContent"
-                                  :disabled="!selectedNote || isDeleting || activeSection === 'trash'"
-                                  class="w-full h-full resize-none outline-none bg-transparent font-sans"
-                                  placeholder="Начните писать..."/>
-                    </div>
-                </div>
+                        <div v-if="selectedNote && activeSection !== 'trash'" class="min-h-10 flex flex-col items-start gap-2 px-1 mb-2">
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="text-sm text-text/60">Теги:</span>
+                            </div>
 
-                <SharingPanel v-if="selectedNote && activeSection !== 'trash'" :note-id="selectedNote.id"
-                              :is-owner="selectedNote.is_owner"/>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span v-for="tag in noteTags" :key="tag.id"
+                                      class="rounded-full bg-accent/20 px-3 py-1 text-xs text-text flex items-center gap-1">
+                                    {{ tag.name }}
+                                    <button class="rounded-full p-0.5 hover:bg-accent/40 transition-colors cursor-pointer disabled:opacity-40"
+                                        title="Открепить тег" :disabled="isUpdatingTag"
+                                        @click="handleRemoveTag(tag.id)">
+                                        <XIcon :size="12" />
+                                    </button>
+                                </span>
+
+                                <div class="relative" ref="tagDropdown">
+                                    <button
+                                        class="w-6 h-6 flex items-center justify-center rounded-full border border-text/30 hover:bg-accent/35 transition-colors cursor-pointer disabled:opacity-40"
+                                        title="Добавить тег"
+                                        :disabled="isUpdatingTag"
+                                        @click.stop="isTagListOpen = !isTagListOpen">
+                                        <PlusIcon :size="16" />
+                                    </button>
+
+                                    <div v-if="isTagListOpen"
+                                         class="absolute left-0 top-full z-30 mt-2 w-52 max-h-60 overflow-y-auto rounded-lg border border-text/30 bg-surface shadow-md p-2">
+                                        <p class="text-xs text-text/50 px-2 py-1">Доступные теги</p>
+                                        <button v-for="tag in availableTags" :key="tag.id"
+                                            class="w-full text-left px-2 py-2 rounded-md text-sm hover:bg-accent/25 transition-colors cursor-pointer disabled:opacity-40"
+                                            :disabled="isUpdatingTag"
+                                            @click="handleAddTag(tag.id)">
+                                            {{ tag.name }}
+                                        </button>
+
+                                        <p v-if="availableTags.length === 0" class="px-2 py-2 text-xs text-text/50">Все теги уже добавлены</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="self-end shrink-0 text-sm text-text/60 hover:text-text transition-colors cursor-pointer"
+                                    @click="isManageTagsModalOpen = true">
+                                Управление
+                            </button>
+                        </div>
+                        <div class="min-h-0 flex-1 rounded-sm border border-black-200 p-4">
+                            <textarea v-model="editContent"
+                                      :disabled="!selectedNote || isDeleting || activeSection === 'trash'"
+                                      class="w-full h-full resize-none outline-none bg-transparent font-sans"
+                                      placeholder="Начните писать..."/>
+                        </div>
+                    </div>
+
+                    <SharingPanel v-if="selectedNote && activeSection !== 'trash'" :note-id="selectedNote.id"
+                                  :is-owner="selectedNote.is_owner"/>
+                </div>
             </div>
         </div>
         <CreateNoteModal

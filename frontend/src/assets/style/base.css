@@ -24,10 +24,17 @@ body {
   background-color: var(--nt-background);
 
   font-family: "Nunito Sans", sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.6;
 
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@media (min-width: 640px) {
+  body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
 }

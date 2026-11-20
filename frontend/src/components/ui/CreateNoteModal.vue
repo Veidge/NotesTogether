@@ -45,7 +45,7 @@ function submitForm() {
     <Teleport to="body">
         <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
             @click.self="isOpen = false">
-            <form class="w-full max-w-lg rounded-xl border border-text bg-surface p-6 shadow-xl flex flex-col gap-4"
+            <form class="create-note-modal w-full max-w-lg rounded-xl border border-text bg-surface p-6 shadow-xl flex flex-col gap-4"
                 @submit.prevent="submitForm" novalidate>
                 <h2 class="font-logo text-2xl">Новая заметка</h2>
                 <div class="flex flex-col gap-1">

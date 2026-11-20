@@ -559,7 +559,7 @@ onBeforeUnmount(() => {
 
                 <div class="flex flex-col min-[1000px]:flex-row flex-1 min-w-0 min-h-0 gap-3">
 
-                    <div class="w-full min-[1000px]:flex-1 min-w-0 min-h-[55vh] min-[1000px]:min-h-0 overflow-y-auto flex flex-col gap-2 border-t-2 border-accent/70 pt-3 mt-2 sm:border-0 sm:pt-0 sm:mt-0">
+                    <div class="w-full min-[1000px]:flex-1 min-w-0 min-h-[55vh] min-[1000px]:min-h-0 min-[1000px]:overflow-y-auto flex flex-col gap-2 border-t-2 border-accent/70 pt-3 mt-2 sm:border-0 sm:pt-0 sm:mt-0">
                         <p v-if="selectedNote" class="sm:hidden px-1 text-xs font-medium uppercase tracking-wider text-text/55">
                             Выбранная заметка
                         </p>
@@ -623,7 +623,7 @@ onBeforeUnmount(() => {
                         <p v-if="deleteError" class="text-xs text-red-700 text-right -mt-3 mb-1">
                             {{ deleteError }}
                         </p>
-                        <div class="relative">
+                        <div class="note-color-picker relative">
 
                             <div v-if="isColorPickerOpen && activeSection !== 'trash'"
                                  class="absolute left-0 top-full z-20 mt-2 p-3 rounded-lg border border-text/40 bg-surface shadow-md flex flex-col gap-3 w-fit">

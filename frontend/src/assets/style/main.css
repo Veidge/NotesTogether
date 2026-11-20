@@ -33,6 +33,10 @@
   --color-text: var(--nt-text);
 }
 
-.verte__menu-origin--top.verte__menu-origin--active {
+.create-note-modal .verte__menu-origin--top.verte__menu-origin--active {
   transform: translate(-210px, 145px) !important;
+}
+
+.note-color-picker .verte__menu-origin--top.verte__menu-origin--active {
+  transform: translate(0, 430px) !important;
 }

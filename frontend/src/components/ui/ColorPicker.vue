@@ -11,5 +11,6 @@ const color = defineModel<string>({ required: true });
         picker="square"
         model="hex"
         menu-position="top"
+        :draggable="false"
     />
 </template>

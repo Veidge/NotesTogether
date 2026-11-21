@@ -86,8 +86,11 @@ export const useNotesStore = defineStore("notes", {
                 else if (archivedNotes.length > 0) {
                     this.activeSection = "archive";
                 }
-                else {
+                else if (trashedNotes.length > 0) {
                     this.activeSection = "trash";
+                }
+                else {
+                    this.activeSection = "notes";
                 }
             }
             this.noteTags = [];

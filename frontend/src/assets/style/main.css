@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import 'base.css';
+
+@font-face {
+  font-family: "Merienda";
+  src: url("../fonts/Merienda-VariableFont_wght.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Lora";
+  src: url("../fonts/Lora-VariableFont_wght.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Nunito Sans";
+  src: url("../fonts/NunitoSans-VariableFont_YTLC,opsz,wdth,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+@theme {
+  --font-logo: "Merienda", cursive;
+  --font-heading: "Lora", serif;
+  --font-sans: "Nunito Sans", sans-serif;
+
+  --color-background: var(--nt-background);
+  --color-surface: var(--nt-surface);
+  --color-accent: var(--nt-accent);
+  --color-text: var(--nt-text);
+}
+
+.create-note-modal .verte__menu-origin--top.verte__menu-origin--active {
+  transform: translate(-210px, 145px) !important;
+}
+
+.note-color-picker .verte__menu-origin--top.verte__menu-origin--active {
+  transform: translate(0, 430px) !important;
+}

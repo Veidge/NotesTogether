@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models import User, Note, Tag, NoteTag, NoteUser
 from schemas import UserRegister, UserResponse, UserLogin, TokenResponse, NoteCreate, NoteResponse, NoteUpdate, \
     TagResponse, TagCreate, TagUpdate, NoteArchive, UserSharing, NoteUserResponse, UserRoleUpdate
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(encoding="utf-8")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -19,6 +20,13 @@ ALGORITHM = os.getenv("ALGORITHM")
 EXPIRE_MINUTES = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 password_hash = PasswordHash.recommended()
 security = HTTPBearer()
 
@@ -52,6 +60,7 @@ def build_note_response(note: Note, user_note: NoteUser) -> NoteResponse:
     return NoteResponse(
         id=note.id,
         title=note.title,
+        is_owner=note.owner_id == user_note.user_id,
         content=note.content,
         color=note.color,
         is_archived=user_note.is_archived,
@@ -60,12 +69,14 @@ def build_note_response(note: Note, user_note: NoteUser) -> NoteResponse:
     )
 
 # Формирование дополнения выборки для запроса с сортировкой и поиском.
-def apply_search_and_sort(query, search: str | None = None, tag_search: str | None = None,
-                          sort_by: str = "updated_at", order: str = "desc"):
+def apply_search_and_sort(query, search: str | None = None, sort_by: str = "updated_at", order: str = "desc"):
+    search = search.strip() if search else None
     if search is not None:
-        query = query.filter(or_(Note.title.ilike(f'%{search}%'), Note.content.ilike(f'%{search}%')))
-    if tag_search is not None:
-        query = query.join(NoteTag).join(Tag).filter(Tag.name.ilike(f'%{tag_search}%')).distinct()
+        search_pattern = f"%{search}%"
+        query = query.outerjoin(NoteTag).outerjoin(Tag).filter(
+            or_(Note.title.ilike(search_pattern),Note.content.ilike(search_pattern), Tag.name.ilike(search_pattern))
+        ).distinct()
+
     if sort_by not in allowed_sort_fields:
         raise HTTPException(status_code=400, detail="Невозможно отсортировать по данному полю.")
     if order not in allowed_orders:
@@ -141,28 +152,26 @@ def create_note(
 
 # Получить список заметок пользователя.
 @app.get("/notes", response_model=list[NoteResponse])
-def get_notes(search: str | None = None, tag_search: str | None = None,
-              sort_by: str = "updated_at", order: str = "desc",
+def get_notes(search: str | None = None, sort_by: str = "updated_at", order: str = "desc",
               current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     query = db.query(Note, NoteUser).join(NoteUser).filter(
         current_user.id == NoteUser.user_id,
         NoteUser.deleted_at.is_(None),
         NoteUser.is_archived.is_(False)
     )
-    query = apply_search_and_sort(query, search, tag_search, sort_by, order)
+    query = apply_search_and_sort(query, search, sort_by, order)
     user_notes = query.all()
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 
 @app.get("/notes/archive", response_model=list[NoteResponse])
-def get_archived_notes(search: str | None = None, tag_search: str | None = None,
-                       sort_by: str = "updated_at", order: str = "desc",
+def get_archived_notes(search: str | None = None, sort_by: str = "updated_at", order: str = "desc",
                        current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     query = db.query(Note, NoteUser).join(NoteUser).filter(
         current_user.id == NoteUser.user_id,
         NoteUser.is_archived.is_(True),
         NoteUser.deleted_at.is_(None)
     )
-    query = apply_search_and_sort(query, search, tag_search, sort_by, order)
+    query = apply_search_and_sort(query, search, sort_by, order)
     user_notes = query.all()
     return [build_note_response(note, user_note) for note, user_note in user_notes]
 

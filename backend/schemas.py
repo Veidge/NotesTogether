@@ -94,6 +94,7 @@ class NoteResponse(BaseModel):
 
     id: int
     title: str
+    is_owner: bool
     content: str
     color: str
     is_archived: bool

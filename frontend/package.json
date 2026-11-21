@@ -11,14 +11,21 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
-    "vue": "^3.5.42"
+    "@lucide/vue": "^1.74.0",
+    "@vee-validate/zod": "^4.15.1",
+    "pinia": "^4.1.0",
+    "verte-vue3": "^1.2.0",
+    "vue": "^3.5.42",
+    "vue-router": "^5.5.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
     "@tsconfig/node24": "^24.0.5",
     "@types/node": "^24.13.4",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
     "npm-run-all2": "^9.0.3",
+    "tailwindcss": "^4.3.5",
     "typescript": "~6.0.0",
     "vite": "^8.2.2",
     "vite-plugin-vue-devtools": "^8.2.1",

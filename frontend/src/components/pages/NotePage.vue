@@ -567,7 +567,7 @@ onBeforeUnmount(() => {
 
                 <div class="flex flex-col min-[1000px]:flex-row flex-1 min-w-0 min-h-0 gap-3">
 
-                    <div class="w-full min-[1000px]:flex-1 min-w-0 min-h-[55vh] min-[1000px]:min-h-0 min-[1000px]:overflow-y-auto flex flex-col gap-2 border-t-2 border-accent/70 pt-3 mt-2 sm:border-0 sm:pt-0 sm:mt-0">
+                    <div class="w-full flex-none min-w-0 min-h-[55vh] min-[1000px]:flex-1 min-[1000px]:min-h-0 min-[1000px]:overflow-y-auto flex flex-col gap-2 border-t-2 border-accent/70 pt-3 mt-2 sm:border-0 sm:pt-0 sm:mt-0">
                         <p v-if="selectedNote" class="sm:hidden px-1 text-xs font-medium uppercase tracking-wider text-text/55">
                             Выбранная заметка
                         </p>
@@ -622,7 +622,7 @@ onBeforeUnmount(() => {
                             </template>
                         </div>
 
-                        <p class="text-xs text-text/60 text-right -mt-3">
+                        <p class="text-xs text-text/60 text-right mt-1">
                             <span v-if="saveStatus === 'editing'">Есть несохранённые изменения</span>
                             <span v-else-if="saveStatus === 'saving'">Сохранение...</span>
                             <span v-else-if="saveStatus === 'saved'">Сохранено</span>
@@ -696,10 +696,10 @@ onBeforeUnmount(() => {
                                 Управление
                             </button>
                         </div>
-                        <div class="min-h-0 flex-1 rounded-sm border border-black-200 p-4">
+                        <div class="flex-none min-[1000px]:min-h-0 min-[1000px]:flex-1 flex flex-col rounded-sm border border-black-200 p-4">
                             <textarea v-model="editContent"
                                       :disabled="!selectedNote || isDeleting || activeSection === 'trash'"
-                                      class="w-full h-full resize-none outline-none bg-transparent font-sans"
+                                      class="w-full min-h-0 [field-sizing:content] resize-none outline-none bg-transparent font-sans min-[1000px]:flex-1 min-[1000px]:[field-sizing:fixed]"
                                       placeholder="Начните писать..."/>
                         </div>
                     </div>

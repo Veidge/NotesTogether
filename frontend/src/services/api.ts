@@ -14,6 +14,7 @@ export interface TokenResponse {
 
 export interface ApiError extends Error {
     status: number;
+    detail: string;
 }
 
 export interface NoteSearchParams {
@@ -62,10 +63,10 @@ export async function register(displayName: string, username: string, password: 
 async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
         const errorData = await response.json();
-        const error = new Error(
-            `Ошибка получения данных: ${response.status} ${response.statusText} - ${errorData.detail}`
-        ) as ApiError;
+        const detail = errorData.detail ?? response.statusText;
+        const error = new Error(detail) as ApiError;
         error.status = response.status;
+        error.detail = detail;
         throw error;
     }
     if (response.status === 204) {

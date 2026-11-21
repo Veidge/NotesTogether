@@ -5,6 +5,8 @@ import {useForm} from "vee-validate"
 import HeaderBase from "../ui/HeaderBase.vue";
 import {useAuthStore} from "../../stores/auth";
 import {useRouter} from "vue-router";
+import { useToastStore } from "../../stores/toast";
+import type { ApiError } from "../../services/api";
 
 const formSchema = toTypedSchema(
     z.object({
@@ -23,11 +25,31 @@ const [password, passwordAttrs] = form.defineField('password');
 
 const authStore = useAuthStore();
 const router = useRouter();
+const toastStore = useToastStore();
 
-const onSubmit = form.handleSubmit(async(values) => {
-    await authStore.login({username: values.username, password: values.password});
-    await router.push({ name: 'notes' });
-})
+const onSubmit = form.handleSubmit(async (values) => {
+    try {
+        await authStore.login({
+            username: values.username,
+            password: values.password
+        });
+        await router.push({ name: "notes" });
+    } catch (error) {
+        if (error instanceof Error && "status" in error && typeof error.status === "number") {
+            const apiError = error as ApiError;
+            if (apiError.status === 401) {
+                toastStore.addToast("error", "Неверный логин или пароль");
+            } else {
+                toastStore.addToast("error", `Ошибка сервера - HTTP ${apiError.status} - ${apiError.detail}`);
+            }
+        } else {
+            toastStore.addToast("error", error instanceof TypeError
+                ? "Не удалось связаться с сервером. Проверьте подключение."
+                : "Не удалось выполнить вход. Попробуйте ещё раз."
+            );
+        }
+    }
+});
 </script>
 
 <template>

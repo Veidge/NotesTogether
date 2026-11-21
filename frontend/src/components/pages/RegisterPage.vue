@@ -5,6 +5,8 @@ import {useForm} from "vee-validate"
 import HeaderBase from "../ui/HeaderBase.vue";
 import {useAuthStore} from "../../stores/auth";
 import {useRouter} from "vue-router";
+import { useToastStore } from "../../stores/toast";
+import type { ApiError } from "../../services/api";
 
 const formSchema = toTypedSchema(
     z.object({
@@ -31,15 +33,33 @@ const [confirmPassword, confirmPasswordAttrs] = form.defineField('confirmPasswor
 
 const authStore = useAuthStore();
 const router = useRouter();
+const toastStore = useToastStore();
+
 
 const onSubmit = form.handleSubmit(async (values) => {
-    await authStore.register({
-        displayName: values.displayName,
-        username: values.username,
-        password: values.password
-    });
-    await router.push({ name: 'login' });
-})
+    try {
+        await authStore.register({
+            displayName: values.displayName,
+            username: values.username,
+            password: values.password
+        });
+        toastStore.addToast("success", "Новый пользователь успешно создан");
+        await router.push({ name: "login" });
+    } catch (error) {
+        if (error instanceof Error && "status" in error && typeof error.status === "number") {
+            const apiError = error as ApiError;
+            toastStore.addToast("error", `Ошибка сервера - HTTP ${apiError.status} - ${apiError.detail}`);
+        } else {
+            toastStore.addToast("error", error instanceof TypeError
+                    ? "Не удалось связаться с сервером. Проверьте подключение."
+                    : "Не удалось выполнить регистрацию. Попробуйте ещё раз."
+            );
+        }
+    }
+}, () => {
+        toastStore.addToast("error", "Заполните все поля регистрации.");
+    }
+);
 
 </script>
 

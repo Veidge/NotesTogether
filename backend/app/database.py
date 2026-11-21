@@ -18,7 +18,7 @@ DATABASE_URL = f"postgresql+psycopg://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATAB
 if not DATABASE_URL:
     raise RuntimeError("Отсутствие подключения к БД: DATABASE_URL не определён.")
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():

@@ -181,7 +181,7 @@ onMounted(async () => {
     }
     catch (error) {
         if (error instanceof Error && "status" in error && error.status === 401) {
-            authStore.logout();
+            authStore.handleSessionExpired();
             await router.replace({ name: "login" });
             return;
         }

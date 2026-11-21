@@ -1,6 +1,7 @@
 import {defineStore} from "pinia";
 import { getUser, login, register, type ApiError } from "../services/api.ts";
 import { useNotesStore } from "./notes.ts";
+import { useToastStore } from "./toast.ts";
 
 export interface UserRegister {
     displayName: string;
@@ -61,12 +62,19 @@ export const useAuthStore = defineStore("auth", {
                 if (error instanceof Error && "status" in error && typeof error.status === "number") {
                     const apiError = error as ApiError;
                     if (apiError.status === 401) {
-                        this.logout();
+                        this.handleSessionExpired();
                         return;
                     }
                 }
                 throw error;
             }
-        }
+        },
+
+        handleSessionExpired() {
+            if (!this.token) return;
+            const toastStore = useToastStore();
+            toastStore.addToast("error", "Время Вашей сессии истекло. Пожалуйста, войдите снова");
+            this.logout();
+        },
     }
 })

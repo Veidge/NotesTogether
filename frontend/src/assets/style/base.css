@@ -1,0 +1,40 @@
+
+:root {
+  /* Цветовая палитра */
+  --nt-background: #DDD5C7;
+  --nt-surface: #F2ECE3;
+  --nt-accent: #B69C82;
+  --nt-text: #403A33;
+
+  /* Базовые настройки оформления */
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+
+  color: var(--nt-text);
+  background-color: var(--nt-background);
+
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (min-width: 640px) {
+  body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+}

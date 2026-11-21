@@ -1,0 +1,559 @@
+import pytest
+from app.models import User, Note, NoteUser
+
+
+# Создание пользователя с сохраненением его данных.
+def test_register_user_successfully(client, db_session):
+    response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_test",
+            "password": "password123"
+        }
+    )
+    assert response.status_code == 200 # успешно доставлено.
+    response_data = response.json()
+
+    assert response_data["display_name"] == "Atlant"
+    assert response_data["username"] == "atlant_test"
+
+    user = db_session.query(User).filter(
+        User.username == "atlant_test"
+    ).first()
+
+    assert user is not None
+    assert user.display_name == "Atlant"
+    assert user.password != "password123" # пароль в виде хэша.
+
+# Регистрация пользователя повторно.
+def test_register_user_again_unsuccessfully(client, db_session):
+    response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_test",
+            "password": "password123"
+        }
+    )
+
+    assert response.status_code == 200
+
+    # Дублирование существующего пользователя - 409 код. (Уже существует запись)
+    new_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_test",
+            "password": "password123"
+        }
+    )
+    assert new_response.status_code == 409
+    assert new_response.json()["detail"] == "Пользователь с таким именем уже существует."
+
+    # Создался 1 пользователь из 2.
+    users_count = db_session.query(User).filter(
+        User.username == "atlant_test"
+    ).count()
+    assert users_count == 1
+
+    # Создался именно тот пользователь.
+    user = db_session.query(User).filter(
+        User.username == "atlant_test"
+    ).first()
+    assert user is not None
+    assert user.display_name == "Atlant"
+    assert user.password != "password123"
+
+# Авторизация пользователя с возвращением токена.
+def test_login_user_successfully(client):
+    # Новый пользователь.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "ГигаЧаД",
+            "username": "giga_user_pro",
+            "password": "ybnhgVv-12"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация по созданному пользователю.
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "giga_user_pro",
+            "password": "ybnhgVv-12"
+        }
+    )
+    assert auth_response.status_code == 200
+
+    # Получение структуры ответа и проверка её корректности.
+    response_data = auth_response.json()
+    assert "access_token" in response_data
+    assert "token_type" in response_data
+    assert response_data["token_type"] == "bearer"
+    assert response_data["access_token"] != ""
+
+# Авторизация пользователя с неверным паролем.
+def test_login_user_wrong_password_unsuccessfully(client):
+    # Новый пользователь.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "ГигаЧаД",
+            "username": "giga_user_pro",
+            "password": "ybnhgVv-12"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация по созданному пользователю (ошибочный пароль).
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "giga_user_pro",
+            "password": "ybnhgVv_12"
+        }
+    )
+    assert auth_response.status_code == 401
+    assert auth_response.json()['detail'] == "Пользователя с такими данными не найдено."
+
+
+# Создание заметки.
+def test_create_note_successfully(client, db_session):
+    # Регистрация пользователя.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация пользователя.
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert auth_response.status_code == 200
+
+    access_token = auth_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Создание заметки.
+    response = client.post(
+        "/notes",
+        json={
+            "title": "Тестовая заметка",
+            "content": "Содержимое заметки",
+            "color": "#ffffff"
+        },
+        headers=headers
+    )
+    assert response.status_code == 200
+
+    # Проверка ответа.
+    response_data = response.json()
+    assert response_data["title"] == "Тестовая заметка"
+    assert response_data["content"] == "Содержимое заметки"
+    assert response_data["color"] == "#ffffff"
+
+    # Проверка записи в БД.
+    user = db_session.query(User).filter(
+        User.username == "atlant_notes"
+    ).first()
+
+    note = db_session.query(Note).filter(
+        Note.title == "Тестовая заметка"
+    ).first()
+
+    assert note is not None
+    assert note.owner_id == user.id
+    assert note.content == "Содержимое заметки"
+    assert note.color == "#ffffff"
+
+    # Проверка связи заметки с владельцем.
+    note_user = db_session.query(NoteUser).filter(
+        NoteUser.note_id == note.id,
+        NoteUser.user_id == user.id
+    ).first()
+
+    assert note_user is not None
+    assert note_user.is_editor is False
+    assert note_user.is_archived is False
+    assert note_user.deleted_at is None
+
+# Получение списка заметок пользователя.
+def test_get_notes_successfully(client, db_session):
+    # Регистрация пользователя.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация пользователя.
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert auth_response.status_code == 200
+
+    access_token = auth_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Создание двух заметок.
+    for title, content in [
+        ("Первая заметка", "Первое содержимое"),
+        ("Вторая заметка", "Второе содержимое")
+    ]:
+        response = client.post(
+            "/notes",
+            json={
+                "title": title,
+                "content": content,
+                "color": "#ffffff"
+            },
+            headers=headers
+        )
+        assert response.status_code == 200
+
+    # Получение списка заметок.
+    response = client.get("/notes", headers=headers)
+    assert response.status_code == 200
+
+    # Проверка ответа.
+    response_data = response.json()
+    assert len(response_data) == 2
+
+    notes = {note["title"]: note for note in response_data}
+
+    assert "Первая заметка" in notes
+    assert "Вторая заметка" in notes
+    assert notes["Первая заметка"]["content"] == "Первое содержимое"
+    assert notes["Вторая заметка"]["content"] == "Второе содержимое"
+    assert notes["Первая заметка"]["color"] == "#ffffff"
+    assert notes["Вторая заметка"]["color"] == "#ffffff"
+
+    # Проверка записей в БД.
+    user = db_session.query(User).filter(
+        User.username == "atlant_notes"
+    ).first()
+
+    assert user is not None
+
+    user_notes = db_session.query(NoteUser).filter(
+        NoteUser.user_id == user.id,
+        NoteUser.deleted_at.is_(None),
+        NoteUser.is_archived.is_(False)
+    ).all()
+
+    assert len(user_notes) == 2
+
+# Редактирование заметки.
+def test_edit_note_successfully(client, db_session):
+    # Регистрация пользователя.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация пользователя.
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert auth_response.status_code == 200
+
+    access_token = auth_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Создание заметки.
+    create_response = client.post(
+        "/notes",
+        json={
+            "title": "Старая заметка",
+            "content": "Старое содержимое",
+            "color": "#ffffff"
+        },
+        headers=headers
+    )
+    assert create_response.status_code == 200
+    note_id = create_response.json()["id"]
+
+    # Редактирование заметки.
+    response = client.patch(
+        f"/notes/{note_id}",
+        json={
+            "title": "Обновлённая заметка",
+            "content": "Новое содержимое",
+            "color": "#000000"
+        },
+        headers=headers
+    )
+    assert response.status_code == 200
+
+    # Проверка ответа.
+    response_data = response.json()
+    assert response_data["id"] == note_id
+    assert response_data["title"] == "Обновлённая заметка"
+    assert response_data["content"] == "Новое содержимое"
+    assert response_data["color"] == "#000000"
+
+    # Проверка изменений в БД.
+    note = db_session.query(Note).filter(
+        Note.id == note_id
+    ).first()
+
+    assert note is not None
+    assert note.title == "Обновлённая заметка"
+    assert note.content == "Новое содержимое"
+    assert note.color == "#000000"
+
+# Удаление заметки в корзину и восстановление.
+def test_delete_and_restore_note_successfully(client, db_session):
+    # Регистрация пользователя.
+    register_response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Atlant",
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert register_response.status_code == 200
+
+    # Авторизация пользователя.
+    auth_response = client.post(
+        "/auth/login",
+        json={
+            "username": "atlant_notes",
+            "password": "password123"
+        }
+    )
+    assert auth_response.status_code == 200
+
+    access_token = auth_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Создание заметки.
+    create_response = client.post(
+        "/notes",
+        json={
+            "title": "Заметка для удаления",
+            "content": "Проверка корзины",
+            "color": "#ffffff"
+        },
+        headers=headers
+    )
+    assert create_response.status_code == 200
+    note_id = create_response.json()["id"]
+
+    # Удаление заметки.
+    delete_response = client.delete(
+        f"/notes/{note_id}",
+        headers=headers
+    )
+    assert delete_response.status_code == 204
+
+    # Проверка удаления в БД.
+    note_user = db_session.query(NoteUser).filter(
+        NoteUser.note_id == note_id
+    ).first()
+
+    assert note_user is not None
+    assert note_user.deleted_at is not None
+
+    # Восстановление заметки.
+    restore_response = client.patch(
+        f"/notes/{note_id}/restore",
+        headers=headers
+    )
+    assert restore_response.status_code == 200
+
+    # Проверка ответа.
+    response_data = restore_response.json()
+    assert response_data["id"] == note_id
+    assert response_data["title"] == "Заметка для удаления"
+    assert response_data["content"] == "Проверка корзины"
+
+    # Проверка восстановления в БД.
+    db_session.refresh(note_user)
+    assert note_user.deleted_at is None
+
+
+# Совместный доступ: проверка прав читателя и редактора.
+def test_note_sharing_reader_and_editor_access(client, db_session):
+    # Регистрация владельца.
+    owner_register = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Владелец",
+            "username": "note_owner",
+            "password": "password123"
+        }
+    )
+    assert owner_register.status_code == 200
+
+    # Регистрация читателя.
+    reader_register = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Читатель",
+            "username": "note_reader",
+            "password": "password123"
+        }
+    )
+    assert reader_register.status_code == 200
+
+    # Регистрация редактора.
+    editor_register = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Редактор",
+            "username": "note_editor",
+            "password": "password123"
+        }
+    )
+    assert editor_register.status_code == 200
+
+    # Авторизация владельца.
+    owner_auth = client.post(
+        "/auth/login",
+        json={
+            "username": "note_owner",
+            "password": "password123"
+        }
+    )
+    assert owner_auth.status_code == 200
+    owner_headers = {
+        "Authorization": f"Bearer {owner_auth.json()['access_token']}"
+    }
+
+    # Авторизация читателя.
+    reader_auth = client.post(
+        "/auth/login",
+        json={
+            "username": "note_reader",
+            "password": "password123"
+        }
+    )
+    assert reader_auth.status_code == 200
+    reader_headers = {
+        "Authorization": f"Bearer {reader_auth.json()['access_token']}"
+    }
+
+    # Авторизация редактора.
+    editor_auth = client.post(
+        "/auth/login",
+        json={
+            "username": "note_editor",
+            "password": "password123"
+        }
+    )
+    assert editor_auth.status_code == 200
+    editor_headers = {
+        "Authorization": f"Bearer {editor_auth.json()['access_token']}"
+    }
+
+    # Создание заметки владельцем.
+    create_response = client.post(
+        "/notes",
+        json={
+            "title": "Общая заметка",
+            "content": "Исходное содержимое",
+            "color": "#ffffff"
+        },
+        headers=owner_headers
+    )
+    assert create_response.status_code == 200
+    note_id = create_response.json()["id"]
+
+    # Предоставление доступа читателю.
+    reader_share = client.post(
+        f"/notes/{note_id}/users",
+        json={
+            "username": "note_reader",
+            "is_editor": False
+        },
+        headers=owner_headers
+    )
+    assert reader_share.status_code == 201
+
+    # Предоставление доступа редактору.
+    editor_share = client.post(
+        f"/notes/{note_id}/users",
+        json={
+            "username": "note_editor",
+            "is_editor": True
+        },
+        headers=owner_headers
+    )
+    assert editor_share.status_code == 201
+
+    # Проверка: читатель не может редактировать заметку.
+    reader_edit = client.patch(
+        f"/notes/{note_id}",
+        json={"content": "Изменение от читателя"},
+        headers=reader_headers
+    )
+    assert reader_edit.status_code == 403
+
+    # Проверка: редактор может редактировать заметку.
+    editor_edit = client.patch(
+        f"/notes/{note_id}",
+        json={"content": "Изменение от редактора"},
+        headers=editor_headers
+    )
+    assert editor_edit.status_code == 200
+    assert editor_edit.json()["content"] == "Изменение от редактора"
+
+    # Проверка ролей и итогового содержимого в БД.
+    reader = db_session.query(User).filter(
+        User.username == "note_reader"
+    ).first()
+
+    editor = db_session.query(User).filter(
+        User.username == "note_editor"
+    ).first()
+
+    note = db_session.query(Note).filter(
+        Note.id == note_id
+    ).first()
+
+    reader_access = db_session.query(NoteUser).filter(
+        NoteUser.note_id == note_id,
+        NoteUser.user_id == reader.id
+    ).first()
+
+    editor_access = db_session.query(NoteUser).filter(
+        NoteUser.note_id == note_id,
+        NoteUser.user_id == editor.id
+    ).first()
+
+    assert note.content == "Изменение от редактора"
+    assert reader_access is not None
+    assert reader_access.is_editor is False
+    assert editor_access is not None
+    assert editor_access.is_editor is True

@@ -15,11 +15,13 @@ import ColorPicker from "../ui/ColorPicker.vue";
 import CreateNoteModal from "../ui/CreateNoteModal.vue";
 import ManageTagsModal from "../ui/ManageTagsModal.vue";
 import SharingPanel from "../ui/SharingPanel.vue";
+import { useToastStore } from "../../stores/toast";
 
 
 const router = useRouter();
 const notesStore = useNotesStore();
 const authStore = useAuthStore();
+const toastStore = useToastStore();
 
 const { listNotes, archivedNotes, trashedNotes, selectedNote, activeSection, noteTags } = storeToRefs(notesStore);
 const sortBy = ref<"title" | "updated_at">("updated_at");
@@ -286,12 +288,12 @@ function flushSave() {
     return saveQueue;
 }
 
-async function handleCreateNote(noteData: {
-    title: string;
-    content: string;
-    color: string;
-}) {
+async function handleCreateNote(noteData: {title: string; content: string; color: string;}) {
     if (!authStore.token || isCreating.value) return;
+    if (!noteData.title.trim() && !noteData.content.trim()) {
+        toastStore.addToast("error", "Нельзя создать пустую заметку");
+        return;
+    }
 
     isCreating.value = true;
     createError.value = "";
@@ -299,6 +301,7 @@ async function handleCreateNote(noteData: {
     try {
         await notesStore.createNote(authStore.token, noteData);
         isCreateModalOpen.value = false;
+        toastStore.addToast("success", "Заметка создана");
     } catch (error) {
         console.error("Не удалось создать заметку:", error);
         createError.value = "Не удалось создать заметку. Попробуйте ещё раз.";
@@ -321,6 +324,7 @@ async function handleDeleteNote() {
         }
 
         await notesStore.deleteNote(authStore.token, note.id);
+        toastStore.addToast("success", "Заметка перемещена в корзину");
     } catch (error) {
         console.error("Не удалось переместить заметку в корзину:", error);
         deleteError.value = "Не удалось переместить заметку в корзину.";
@@ -341,6 +345,7 @@ async function handleArchiveNote() {
             return;
         }
         await notesStore.archiveNote(authStore.token, note.id, true);
+        toastStore.addToast("success", "Заметка перемещена в архив");
     } catch (error) {
         console.error("Не удалось переместить заметку в архив:", error);
         deleteError.value = "Не удалось переместить заметку в архив.";
@@ -361,6 +366,7 @@ async function handleUnarchiveNote() {
             return;
         }
         await notesStore.archiveNote(authStore.token, note.id, false);
+        toastStore.addToast("success", "Заметка возвращена из архива");
     } catch (error) {
         console.error("Не удалось вернуть заметку из архива:", error);
         deleteError.value = "Не удалось вернуть заметку из архива.";
@@ -376,6 +382,7 @@ async function handleRestoreNote() {
     deleteError.value = "";
     try {
         await notesStore.restoreNote(authStore.token, note.id);
+        toastStore.addToast("success", "Заметка восстановлена");
     } catch (error) {
         console.error("Не удалось восстановить заметку:", error);
         deleteError.value = "Не удалось восстановить заметку.";
@@ -396,6 +403,7 @@ async function handlePermanentlyDeleteNote() {
     deleteError.value = "";
     try {
         await notesStore.permanentlyDeleteNote(authStore.token, note.id);
+        toastStore.addToast("success", "Заметка удалена");
     } catch (error) {
         console.error("Не удалось удалить заметку окончательно:", error);
         deleteError.value = "Не удалось удалить заметку окончательно.";

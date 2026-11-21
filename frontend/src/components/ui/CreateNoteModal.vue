@@ -30,11 +30,10 @@ watch(isOpen, (opened) => {
 });
 
 function submitForm() {
-    const trimmedTitle = title.value.trim();
-    if (!trimmedTitle || props.loading) return;
+    if (props.loading) return;
 
     emit("create", {
-        title: trimmedTitle,
+        title: title.value.trim(),
         content: content.value,
         color: color.value
     });
@@ -73,8 +72,7 @@ function submitForm() {
                         :disabled="loading" @click="isOpen = false">
                         Отмена
                     </button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-accent/60 hover:bg-accent transition-colors cursor-pointer"
-                        :disabled="loading || !title.trim()">
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-accent/60 hover:bg-accent transition-colors cursor-pointer">
                         {{ loading ? "Создание..." : "Создать" }}
                     </button>
                 </div>

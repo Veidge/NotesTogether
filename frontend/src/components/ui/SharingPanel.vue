@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { useNotesStore } from "../../stores/notes";
 import { useAuthStore } from "../../stores/auth";
 import type { NoteUserResponse } from "../../services/api";
+import { useToastStore } from "../../stores/toast";
 
 const props = defineProps<{
     noteId: number;
@@ -12,6 +13,7 @@ const props = defineProps<{
 
 const notesStore = useNotesStore();
 const authStore = useAuthStore();
+const toastStore = useToastStore();
 
 const { noteUsers } = storeToRefs(notesStore);
 
@@ -20,22 +22,18 @@ const inviteRole = ref<"editor" | "viewer">("editor");
 
 const isLoading = ref(false);
 const isInviting = ref(false);
-const errorMessage = ref("");
-const successMessage = ref("");
 
 const currentUsername = computed(() => authStore.user?.username);
 
 async function loadUsers() {
     if (!authStore.token) return;
     isLoading.value = true;
-    errorMessage.value = "";
-    successMessage.value = "";
     notesStore.noteUsers = [];
 
     try {
         await notesStore.fetchNoteUsers(authStore.token, props.noteId);
     } catch (error) {
-        errorMessage.value = error instanceof Error ? error.message : "Не удалось загрузить список участников.";
+        toastStore.addToast("error", error instanceof Error ? error.message : "Не удалось загрузить список участников.");
     } finally {
         isLoading.value = false;
     }
@@ -45,20 +43,12 @@ async function inviteUser() {
     const invitedUsername = username.value.trim();
     if (!invitedUsername || !authStore.token) return;
     isInviting.value = true;
-    errorMessage.value = "";
-    successMessage.value = "";
-
     try {
-        await notesStore.shareNote(
-            authStore.token,
-            props.noteId,
-            invitedUsername,
-            inviteRole.value === "editor"
-        );
+        await notesStore.shareNote(authStore.token, props.noteId, invitedUsername, inviteRole.value === "editor");
+        toastStore.addToast("success", "Участник успешно добавлен");
         username.value = "";
-        successMessage.value = "Пользователь получил доступ к заметке.";
     } catch (error) {
-        errorMessage.value = error instanceof Error ? error.message : "Не удалось пригласить пользователя.";
+        toastStore.addToast("error", error instanceof Error ? error.message : "Не удалось пригласить пользователя.");
     } finally {
         isInviting.value = false;
     }
@@ -68,46 +58,27 @@ async function changeRole(user: NoteUserResponse, event: Event) {
     if (!authStore.token) return;
     const target = event.target as HTMLSelectElement;
     const isEditor = target.value === "editor";
-    errorMessage.value = "";
-    successMessage.value = "";
-
     try {
-        await notesStore.updateNoteUserRole(
-            authStore.token,
-            props.noteId,
-            user.user_id,
-            isEditor
-        );
+        await notesStore.updateNoteUserRole(authStore.token, props.noteId, user.user_id, isEditor);
+        toastStore.addToast("success", "Права участника изменены");
     } catch (error) {
-        errorMessage.value = error instanceof Error ? error.message : "Не удалось изменить права пользователя.";
+        toastStore.addToast("error", error instanceof Error ? error.message : "Не удалось изменить права пользователя.");
         target.value = user.is_editor ? "editor" : "viewer";
     }
 }
 
 async function revokeAccess(user: NoteUserResponse) {
     if (!authStore.token) return;
-
     const confirmed = window.confirm(
         `Отозвать доступ к заметке у пользователя ${user.username}?`
     );
 
     if (!confirmed) return;
-
-    errorMessage.value = "";
-    successMessage.value = "";
-
     try {
-        await notesStore.removeNoteUser(
-            authStore.token,
-            props.noteId,
-            user.user_id
-        );
-
-        successMessage.value = "Доступ пользователя отозван.";
+        await notesStore.removeNoteUser(authStore.token, props.noteId, user.user_id);
+        toastStore.addToast("success", "Доступ отозван");
     } catch (error) {
-        errorMessage.value = error instanceof Error
-            ? error.message
-            : "Не удалось отозвать доступ.";
+        toastStore.addToast("error", error instanceof Error ? error.message : "Не удалось отозвать доступ.");
     }
 }
 
@@ -190,13 +161,6 @@ watch(
                     </template>
                 </div>
             </div>
-        </div>
-        <div class="relative min-h-0">
-            <div v-if="errorMessage"
-                class="absolute inset-x-0 top-0 rounded-lg bg-red-100 p-2 text-xs text-red-800">{{ errorMessage }}</div>
-
-            <div v-else-if="successMessage"
-                class="absolute inset-x-0 top-0 rounded-lg bg-green-100 p-2 text-xs text-green-800">{{ successMessage }}</div>
         </div>
     </aside>
 </template>

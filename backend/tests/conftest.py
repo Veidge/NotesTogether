@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import make_url
 
@@ -9,7 +9,31 @@ from app.models import Base
 from app.main import app
 
 # Подмена БД.
-TEST_DATABASE_URL = make_url(DATABASE_URL).set(database="notes_together_test")
+database_url = make_url(DATABASE_URL)
+TEST_DATABASE_NAME = "notes_together_test"
+TEST_DATABASE_URL = database_url.set(database=TEST_DATABASE_NAME)
+
+@pytest.fixture(scope="session", autouse=True)
+def create_test_database():
+    admin_url = database_url.set(database="postgres")
+    admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
+
+    try:
+        with admin_engine.connect() as connection:
+            exists = connection.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": TEST_DATABASE_NAME}
+            ).scalar()
+
+            if not exists:
+                connection.execute(
+                    text(f'CREATE DATABASE "{TEST_DATABASE_NAME}"')
+                )
+    finally:
+        admin_engine.dispose()
+
+    yield
+
 
 # Отдельное подключение к тестовой БД.
 test_engine = create_engine(TEST_DATABASE_URL, echo=False)
